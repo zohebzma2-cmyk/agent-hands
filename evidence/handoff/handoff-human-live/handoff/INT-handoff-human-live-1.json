@@ -1,0 +1,14 @@
+{
+  "id": "INT-handoff-human-live-1",
+  "run_id": "handoff-human-live",
+  "capability": "cu_core.open_sub_account@1.0.0",
+  "step_id": "s07",
+  "step_intent": "Read the Base Share balance",
+  "reason": "unexpected_state",
+  "detail": "target covered by: Supervisor Override Required Teller drawer TLR-01 is out of balance. A supervisor must approve before member maintenance can continue. Supervisor PIN:",
+  "ask": "Clear what is covering 'cell next to \"Base Share\", column Balance' so the page is ready for: Read the Base Share balance. Don't do the step itself.",
+  "resume_check": "element present: cell next to \"Base Share\", column Balance (within 5000 ms) (or the target of s07 is reachable)",
+  "screenshot": "screens/014-INT-handoff-human-live-1-before.png",
+  "page_summary": "[top /core/frameset.do]  | [banner /core/banner.do] Ridgeline Example Credit Union (SYNTHETIC) \u2592 \u2592 | [nav /core/nav.do] Functions Member Search Teller Drawer Reports Sign Off | [main /core/member.do] Member Detail Name: \u2592 Member #: \u2592 Address: \u2592 DOB: \u2592 Phone: \u2592 SSN: \u2592 Description ID Balance Base Share \u2592 \u2592 Share Draft \u2592 \u2592 Holiday Club \u2592 \u2592 Supervisor Override Required \u2592 Supervisor PIN:",
+  "requested_at": "2026-10-17T22:56:10.130+00:00"
+}
