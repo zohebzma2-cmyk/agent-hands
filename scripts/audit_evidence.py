@@ -19,7 +19,8 @@ for service in ("openrouter-api-key", "anthropic-api-key"):
 LITERALS = {  # synthetic, but exactly what redaction must keep out
     "teller user id": b"teller01", "teller password": b"synthetic-teller-pass", "supervisor PIN": b"2468",
     "member name ADA SAMPLE": b"ADA SAMPLE", "member name SAMPLE, ADA": b"SAMPLE, ADA",
-    "other members": b"PLACEHOLDER", "address": b"Example Way", "DOB": b"04/12/1961",
+    "other members": b"PLACEHOLDER", "member CAROL EXAMPLE": b"CAROL", "member DAN SAMPLE": b"DAN SAMPLE",
+    "balance 5,310.77": b"5,310.77", "balance 64.19": b"64.19", "address": b"Example Way", "DOB": b"04/12/1961",
     "phone": b"555-01", "balance 812.40": b"812.40", "balance 1,204.11": b"1,204.11",
 }
 PATTERNS = {

@@ -208,15 +208,28 @@ def cmd_replay(args: argparse.Namespace) -> int:
     if args.operator == "terminal" and not sys.stdin.isatty():
         print("stopping: --operator terminal needs an interactive terminal", file=sys.stderr)
         return 1
+    if artifact.capability.status.value == "draft" and not args.allow_draft:
+        print("refusing: this artifact is a draft (pass --allow-draft for pre-promotion evidence runs)",
+              file=sys.stderr)
+        return 1
     target = Target(args)
     run_id = args.run_id or f"rp-{_stamp()}"
     run_dir = Path(args.out) / run_id if args.out else None
     try:
         target.faults(_fault_spec(args.fault))
         result, engine = _run_replay(artifact, args, target, run_id, run_dir,
-                                     TerminalOperator() if args.operator == "terminal" else None)
+                                     TerminalOperator() if args.operator == "terminal" else None,
+                                     allow_draft=args.allow_draft)
     finally:
         target.stop()
+    if run_dir is not None:
+        (run_dir / "invocation.json").write_text(json.dumps({
+            "artifact": artifact.ref, "artifact_status": artifact.capability.status.value,
+            "artifact_hash": artifact.content_hash(), "tenant": args.tenant,
+            "faults": _fault_spec(args.fault), "pre_approved_steps": args.approve,
+            "operator": args.operator, "allow_draft": args.allow_draft,
+            "params": {k: engine.redactor.scrub(v) for k, v in _params(args.param).items()},
+        }, indent=2) + "\n")
     print(json.dumps(result.persisted(artifact, engine.redactor), indent=2))
     return {"succeeded": 0, "outcome": 2, "needs_human": 3}.get(result.status, 1)
 
@@ -357,6 +370,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("-p", "--param", action="append", default=[])
     r.add_argument("--approve", action="append", default=[], help="step id to pre-approve for this run")
     r.add_argument("--operator", choices=["none", "terminal"], default="none")
+    r.add_argument("--allow-draft", action="store_true",
+                   help="replay a not-yet-promoted draft (evidence/testing only; never in production)")
     r.add_argument("--run-id")
     r.add_argument("--out", help="write evidence for this run under OUT/<run-id>")
     _target_args(r)
