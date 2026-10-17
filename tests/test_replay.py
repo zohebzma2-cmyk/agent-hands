@@ -596,3 +596,14 @@ def test_without_a_safe_anchor_the_block_is_escalated_under_its_real_name(sim, a
     assert sim.state.snapshot()["subaccounts"] == []
     assert seen and seen[0][0] == "unexpected_state" and "unapproved submit" in seen[0][1]
     assert "target_not_found" not in [r for r, _ in seen]
+
+
+
+def test_an_operator_that_cannot_approve_hands_off_but_never_commits(sim, artifact):
+    """Separation of duties: taking over the session doesn't confer authority to approve commits."""
+    op = ScriptedOperator(supervisor)
+    op.can_approve = False
+    result, _ = replay(sim, artifact, approved=False, faults={"unknown_dialog": {"mode": "once"}}, operator=op)
+    assert result.handoffs and result.handoffs[0].verified and result.handoffs[0].resolution == "resumed"
+    assert isinstance(result, NeedsHuman) and result.reason == "approval_required" and result.step_id == "s13"
+    assert op.approvals == [] and sim.state.snapshot()["subaccounts"] == []

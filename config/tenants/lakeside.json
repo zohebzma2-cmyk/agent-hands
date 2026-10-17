@@ -2,6 +2,38 @@
   "tenant": "lakeside",
   "profile": "cu_core",
   "description": "Lakeside Sample FCU (synthetic): same vendor product, different branding and labels",
-  "allowlist": {"routes": ["/", "/core/*"], "actions": ["navigate", "click", "fill", "select", "read"]},
-  "secrets": {"teller_username": "sim:teller_username", "teller_password": "sim:teller_password"}
+  "allowlist": {
+    "routes": [
+      "/",
+      "/core/*"
+    ],
+    "actions": [
+      "navigate",
+      "click",
+      "fill",
+      "select",
+      "read"
+    ]
+  },
+  "secrets": {
+    "teller_username": "sim:teller_username",
+    "teller_password": "sim:teller_password"
+  },
+  "overrides": {
+    "cu_core.open_sub_account": {
+      "base_versions": "1.x",
+      "text": {
+        "Member #": "Member No.",
+        "Base Share": "Primary Share",
+        "Sub-Account": "Share",
+        "Open Account": "Open Share",
+        "Opening Deposit": "Initial Deposit"
+      },
+      "param_labels": {
+        "account_type": {
+          "Savings": "Share Account"
+        }
+      }
+    }
+  }
 }

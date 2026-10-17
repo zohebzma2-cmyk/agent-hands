@@ -1,0 +1,26 @@
+[
+  {
+    "at": "2026-10-17T22:34:37.752+00:00",
+    "kind": "change",
+    "frame": "main",
+    "path": "/core/member.do",
+    "target": "input[password] name=pin in row \"Supervisor PIN: | \"",
+    "value": "[MASKED]"
+  },
+  {
+    "at": "2026-10-17T22:34:37.752+00:00",
+    "kind": "click",
+    "frame": "main",
+    "path": "/core/member.do",
+    "target": "input[submit] \"Approve Override\" in row \" | \"",
+    "value": null
+  },
+  {
+    "at": "2026-10-17T22:34:37.753+00:00",
+    "kind": "submit",
+    "frame": "main",
+    "path": "/core/member.do",
+    "target": "form \"\u2592\"",
+    "value": null
+  }
+]

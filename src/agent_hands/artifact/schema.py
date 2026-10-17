@@ -453,6 +453,8 @@ class Provenance(Model):
     models_served: list[str] = []  # every model that actually served a discovery turn (fallbacks)
     upstream_providers: list[str] = []  # via a router (OpenRouter): who actually ran the model
     generation_ids: list[str] = []  # the router's per-turn ids, to audit the run with the router
+    overlay: str | None = None  # tenant overlay applied to a base artifact (artifact/overlay.py)
+    base_hash: str | None = None  # content hash of that base artifact
     validated_runs: list[str] = []
     approved_by: str | None = None
     approved_at: str | None = None

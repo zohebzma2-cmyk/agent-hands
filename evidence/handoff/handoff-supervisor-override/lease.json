@@ -1,0 +1,26 @@
+[
+  {
+    "at": "2026-10-17T20:43:58.097+00:00",
+    "frm": "automation",
+    "to": "awaiting_human",
+    "by": "automation",
+    "reason": "unexpected_state",
+    "epoch": 1
+  },
+  {
+    "at": "2026-10-17T20:44:33.018+00:00",
+    "frm": "awaiting_human",
+    "to": "human",
+    "by": "zoheb",
+    "reason": "operator took control",
+    "epoch": 1
+  },
+  {
+    "at": "2026-10-17T21:01:55.349+00:00",
+    "frm": "human",
+    "to": "aborted",
+    "by": "zoheb",
+    "reason": "timed_out",
+    "epoch": 1
+  }
+]

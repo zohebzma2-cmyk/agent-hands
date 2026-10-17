@@ -159,6 +159,7 @@ class HandoffContext(Protocol):
 
 class Operator(Protocol):
     name: str
+    can_approve: bool  # may this operator approve irreversible steps? (taking over is separate)
 
     def approve(self, req: ApprovalRequest) -> ApprovalDecision: ...
     def handle(self, req: InterventionRequest, ctx: HandoffContext) -> HandoffOutcome: ...
@@ -169,6 +170,7 @@ class TerminalOperator:
     and talks to automation through this terminal."""
 
     name = "terminal"
+    can_approve = True
 
     def __init__(self, stream_in: TextIO = sys.stdin, stream_out: TextIO = sys.stdout, timeout_s: int = 900) -> None:
         self.inp, self.out, self.timeout_s = stream_in, stream_out, timeout_s
@@ -246,6 +248,7 @@ class ScriptedOperator:
     """Tests only: a 'human' scripted as a function that drives the same live page."""
 
     name = "scripted"
+    can_approve = True
 
     def __init__(
         self,

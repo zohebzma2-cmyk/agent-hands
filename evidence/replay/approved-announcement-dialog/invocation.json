@@ -1,0 +1,22 @@
+{
+  "artifact": "cu_core.open_sub_account@1.0.0",
+  "artifact_status": "validated",
+  "artifact_hash": "sha256:2ccdf82ba1b52b90f08d33ad394dce8394fd3136b7ddeb46a1278dbf16681d5a",
+  "tenant": "ridgeline",
+  "faults": {
+    "announcement": {
+      "mode": "once"
+    }
+  },
+  "pre_approved_steps": [
+    "s13"
+  ],
+  "operator": "none",
+  "allow_draft": false,
+  "params": {
+    "member_id": "[PII:member_id]",
+    "account_type": "Savings",
+    "nickname": "Rainy day",
+    "initial_deposit": "[PII:initial_deposit]"
+  }
+}

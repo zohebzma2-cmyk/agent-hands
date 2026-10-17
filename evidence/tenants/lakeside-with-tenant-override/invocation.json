@@ -1,0 +1,18 @@
+{
+  "artifact": "cu_core.open_sub_account@1.0.0",
+  "artifact_status": "validated",
+  "artifact_hash": "sha256:2ccdf82ba1b52b90f08d33ad394dce8394fd3136b7ddeb46a1278dbf16681d5a",
+  "tenant": "lakeside",
+  "faults": {},
+  "pre_approved_steps": [],
+  "operator": "none",
+  "allow_draft": false,
+  "tenant_overlay_applied": "lakeside",
+  "replayed_hash": "sha256:dfdf5945788e49ba31a35847dad4b16e9cf3104d6efb353e1312e46b2f3d1820",
+  "params": {
+    "member_id": "[PII:member_id]",
+    "account_type": "Savings",
+    "nickname": "Rainy day",
+    "initial_deposit": "[PII:initial_deposit]"
+  }
+}

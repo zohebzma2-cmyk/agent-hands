@@ -185,6 +185,14 @@ def _run_replay(artifact: CapabilityArtifact, args: argparse.Namespace, target: 
 
     tenant = _tenant(args.tenant)
     params = _params(args.param)
+    labels: dict[str, dict[str, str]] = {}
+    if not getattr(args, "no_override", False):
+        from agent_hands.artifact.overlay import apply_overlay, overlay_for
+
+        ov = overlay_for(tenant, artifact.capability.id)
+        if ov is not None:
+            artifact = apply_overlay(artifact, ov)
+            labels = ov.param_labels
     try:
         approvals = [approve(artifact, sid, params, getpass.getuser(), run_id=run_id) for sid in args.approve or []]
     except ParamError:
@@ -193,7 +201,7 @@ def _run_replay(artifact: CapabilityArtifact, args: argparse.Namespace, target: 
     session.start()
     try:
         cfg = ReplayConfig(run_id=run_id, origin=target.url, approvals=approvals, allow_draft=allow_draft,
-                           secret_overrides=tenant.get("secrets", {}))
+                           secret_overrides=tenant.get("secrets", {}), param_labels=labels)
         engine = ReplayEngine(artifact, load_profile(artifact.app.profile), session, cfg, operator=operator,
                               run_dir=run_dir)
         return engine.run(params), engine
@@ -228,6 +236,7 @@ def cmd_replay(args: argparse.Namespace) -> int:
             "artifact_hash": artifact.content_hash(), "tenant": args.tenant,
             "faults": _fault_spec(args.fault), "pre_approved_steps": args.approve,
             "operator": args.operator, "allow_draft": args.allow_draft,
+            "tenant_overlay_applied": engine.a.provenance.overlay, "replayed_hash": engine.hash,
             "params": {k: engine.redactor.scrub(v) for k, v in _params(args.param).items()},
         }, indent=2) + "\n")
     print(json.dumps(result.persisted(artifact, engine.redactor), indent=2))
@@ -370,6 +379,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("-p", "--param", action="append", default=[])
     r.add_argument("--approve", action="append", default=[], help="step id to pre-approve for this run")
     r.add_argument("--operator", choices=["none", "terminal"], default="none")
+    r.add_argument("--no-override", action="store_true", help="ignore the tenant's overlay (to see raw drift)")
     r.add_argument("--allow-draft", action="store_true",
                    help="replay a not-yet-promoted draft (evidence/testing only; never in production)")
     r.add_argument("--run-id")

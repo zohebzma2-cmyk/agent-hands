@@ -133,6 +133,7 @@ class ReplayConfig:
     approvals: list[Approval] = field(default_factory=list)
     allow_draft: bool = False  # only the post-compile validation replay runs drafts
     secret_overrides: dict[str, str] = field(default_factory=dict)  # secret name → ref (tenant config)
+    param_labels: dict[str, dict[str, str]] = field(default_factory=dict)  # tenant display labels (overlay)
     nav_timeout_ms: int = 15_000  # entry navigation and frame reloads
     dismiss_timeout_ms: int = 3_000  # clicking a known interstitial's dismiss control
 
@@ -190,6 +191,7 @@ class ReplayEngine:
             self.guard.install(session.context)
         self.guard_seen = 0
         self.params: dict[str, Any] = {}
+        self.ui_params: dict[str, Any] = {}
         self.secrets: dict[str, str] = {}
         self.outputs: dict[str, Any] = {}
         self.records: list[StepRecord] = []
@@ -218,6 +220,8 @@ class ReplayEngine:
             self._check_compatible()
             try:
                 self.params = self.a.bind_params(raw_params)
+                # what the page shows for each param on this tenant; binding/approval/redaction keep the real values
+                self.ui_params = {k: self.cfg.param_labels.get(k, {}).get(str(v), v) for k, v in self.params.items()}
             except ParamError as e:
                 raise _Stop("failed", failure=Failure(
                     kind=FailureKind.PARAM_INVALID, step_id=None,
@@ -368,7 +372,7 @@ class ReplayEngine:
         assert step.target is not None
         deadline = time.monotonic() + step.expect.timeout_ms / 1000
         while True:
-            r = resolve(self.page, step.target, self.params)
+            r = resolve(self.page, step.target, self.ui_params)
             if r.handle is not None and r.frame is not None:
                 return r.handle, r.frame, r.resolution
             self._check(step, "pre")
@@ -399,10 +403,10 @@ class ReplayEngine:
             handle.click(timeout=timeout)
         elif a.kind == ActionKind.FILL:
             assert a.value is not None
-            handle.fill(value_of(a.value, self.params, self.secrets), timeout=timeout)
+            handle.fill(value_of(a.value, self.ui_params, self.secrets), timeout=timeout)
         elif a.kind == ActionKind.SELECT:
             assert a.value is not None
-            handle.select_option(label=value_of(a.value, self.params, self.secrets), timeout=timeout)
+            handle.select_option(label=value_of(a.value, self.ui_params, self.secrets), timeout=timeout)
         elif a.kind == ActionKind.PRESS:
             assert a.key is not None
             handle.press(a.key, timeout=timeout)
@@ -432,8 +436,8 @@ class ReplayEngine:
     # ------------------------------------------------------------ checkpoints
 
     def _holds(self, cp: Checkpoint) -> bool:
-        ok_all = all(condition_holds(self.page, c, self.params, self.secrets) for c in cp.all_of)
-        ok_any = not cp.any_of or any(condition_holds(self.page, c, self.params, self.secrets) for c in cp.any_of)
+        ok_all = all(condition_holds(self.page, c, self.ui_params, self.secrets) for c in cp.all_of)
+        ok_any = not cp.any_of or any(condition_holds(self.page, c, self.ui_params, self.secrets) for c in cp.any_of)
         return ok_all and ok_any
 
     def _await_checkpoint(self, i: int, step: Step) -> str:
@@ -486,7 +490,7 @@ class ReplayEngine:
     # ------------------------------------------------------------- detectors
 
     def _detected(self, cond_list) -> bool:
-        return any(condition_holds(self.page, c, self.params, self.secrets) for c in cond_list)
+        return any(condition_holds(self.page, c, self.ui_params, self.secrets) for c in cond_list)
 
     def _check(self, step: Step, phase: str) -> None:
         if len(self.guard.blocked) > self.guard_seen:
@@ -520,7 +524,7 @@ class ReplayEngine:
             if (not oc.at_steps or step.id in oc.at_steps) and self._detected(oc.detect):
                 message = ""
                 if oc.message_from is not None:
-                    r = resolve(self.page, oc.message_from, self.params)
+                    r = resolve(self.page, oc.message_from, self.ui_params)
                     message = norm(r.handle.inner_text()) if r.handle is not None else ""
                 self.log.screenshot(self.page, f"{step.id}-outcome-{oc.code}", self._masks())
                 raise _Stop("outcome", code=oc.code, message=message, at_step=step.id)
@@ -601,7 +605,7 @@ class ReplayEngine:
         elif cond.handler == "dismiss":
             n = self._spend(cond, step, FailureKind.UNEXPECTED_STATE)
             assert cond.dismiss is not None
-            r = resolve(self.page, cond.dismiss, self.params)
+            r = resolve(self.page, cond.dismiss, self.ui_params)
             if r.handle is None or r.frame is None:
                 return  # detected but not dismissable yet; next tick
             self.session.policy.require_action(ActionKind.CLICK, r.frame.url)
@@ -688,7 +692,9 @@ class ReplayEngine:
                 self.used_approvals.add(n)
                 self.gate_passed.add(step.id)
                 return self._approved(step, "approved", ap.approver, ap.approved_at, "caller_token", ph)
-        if self.operator is None:
+        # Separation of duties: an operator that may take over the session isn't necessarily allowed to
+        # approve commits (an automated stand-in never is). No approver means unattended semantics.
+        if self.operator is None or not getattr(self.operator, "can_approve", True):
             self.log.event("approval_required", step_id=step.id)
             raise _Stop("needs_human", reason="approval_required", step_id=step.id,
                         detail=f"irreversible step '{step.intent}' needs an explicit approval bound to this artifact and params")
@@ -800,7 +806,7 @@ class ReplayEngine:
                 return "failed", "session expired during handoff"
         reachable = False
         if step.target is not None:
-            r = resolve(self.page, step.target, self.params)
+            r = resolve(self.page, step.target, self.ui_params)
             reachable = r.handle is not None and obscured_by(r.handle) is None
         # A read's checkpoint ("the value is on screen") says nothing about whether it was read.
         if step.action.kind != ActionKind.READ and self._holds(step.expect):
