@@ -1,0 +1,7 @@
+{
+  "tenant": "ridgeline",
+  "profile": "cu_core",
+  "description": "Ridgeline Example CU (synthetic) on CoreLink Teller 4.6",
+  "allowlist": {"routes": ["/", "/core/*"], "actions": ["navigate", "click", "fill", "select", "read"]},
+  "secrets": {"teller_username": "sim:teller_username", "teller_password": "sim:teller_password"}
+}

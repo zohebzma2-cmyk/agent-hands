@@ -1,0 +1,7 @@
+{
+  "tenant": "lakeside",
+  "profile": "cu_core",
+  "description": "Lakeside Sample FCU (synthetic): same vendor product, different branding and labels",
+  "allowlist": {"routes": ["/", "/core/*"], "actions": ["navigate", "click", "fill", "select", "read"]},
+  "secrets": {"teller_username": "sim:teller_username", "teller_password": "sim:teller_password"}
+}
