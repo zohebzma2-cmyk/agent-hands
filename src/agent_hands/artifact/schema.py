@@ -145,10 +145,13 @@ class LabelStrategy(Model):
 
 
 class NearTextStrategy(Model):
-    """The control of ``role`` in the same table row as the anchor text.
+    """The control of ``role`` nearest the anchor text in the same table row.
 
-    Legacy table layouts put the visible label in one cell and an unnamed input in the next. This is
-    how a person finds the field, and it survives markup reshuffles inside the row.
+    Legacy table layouts put the visible label in one cell and an unnamed input in the next, often
+    several label/input pairs per row. "Nearest" means the closest cell to the anchor that holds a
+    matching control, following cells before preceding ones. For ``role="cell"`` it is the cell in
+    the anchor's row under the ``column`` header (or the next cell when no column is given).
+    This is how a person finds the field, and it survives markup reshuffles inside the row.
     """
 
     kind: Literal["near_text"]
