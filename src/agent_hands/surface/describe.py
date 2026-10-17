@@ -89,7 +89,9 @@ el => {
   const type = (el.getAttribute('type') || '').toLowerCase();
   const form = el.form || el.closest('form');
   const isSubmit = (tag === 'button' && (type === '' || type === 'submit')) || (tag === 'input' && (type === 'submit' || type === 'image'));
-  const jsSubmit = /\.submit\(\)/.test(el.getAttribute('onclick') || '');
+  const jsSubmit = /\.submit\(/.test((el.getAttribute('onclick') || '') + ' ' + (el.getAttribute('href') || ''))
+    || !!(el.querySelector && el.querySelector('input[type=submit],input[type=image],button:not([type=button])'))
+    || !!(el.closest && el.closest('button:not([type=button])'));
   const method = form ? (form.getAttribute('method') || 'get').toLowerCase() : null;
   const action = form ? new URL(form.getAttribute('action') || location.href, location.href).pathname : null;
   return {

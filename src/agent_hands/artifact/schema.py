@@ -186,6 +186,9 @@ Strategy = Annotated[
 ]
 
 
+SEMANTIC_KINDS = frozenset({"role", "label", "near_text", "text"})
+
+
 class TargetSpec(Model):
     """How to find one control. Strategies are tried in order; each must match exactly one element.
 
@@ -347,6 +350,9 @@ class ParamSpec(Model):
     minimum: Decimal | None = None
     maximum: Decimal | None = None
     example: str | None = None  # synthetic only
+    # This param names the record the capability acts on (a member number). Checkpoints may require
+    # it on screen, so replay can't carry on against a different record.
+    identifies_record: bool = False
 
     @field_validator("sensitivity")
     @classmethod
@@ -444,6 +450,7 @@ class Provenance(Model):
     discovered_by_run: str | None = None
     provider: str | None = None
     model: str | None = None
+    models_served: list[str] = []  # every model that actually served a discovery turn (fallbacks)
     validated_runs: list[str] = []
     approved_by: str | None = None
     approved_at: str | None = None
@@ -506,6 +513,11 @@ class CapabilityArtifact(Model):
                     raise ValueError(f"step {s.id}: resume_anchor {s.resume_anchor} would re-run an irreversible step")
             if s.risk == Risk.IRREVERSIBLE and (s.target is None or s.target.min_agreement < 2):
                 raise ValueError(f"irreversible step {s.id} needs min_agreement >= 2")
+            if s.risk == Risk.IRREVERSIBLE and not any(
+                st.kind in SEMANTIC_KINDS for st in s.target.strategies[: s.target.min_agreement]
+            ):
+                raise ValueError(f"irreversible step {s.id}: the agreeing strategies need a semantic one, "
+                                 "not only positional css/xpath")
             if RISK_ORDER[s.risk] > RISK_ORDER[self.capability.risk]:
                 raise ValueError(f"capability risk '{self.capability.risk}' is lower than step {s.id} risk")
         for o in self.outputs:

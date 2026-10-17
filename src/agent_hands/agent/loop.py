@@ -15,6 +15,7 @@ from __future__ import annotations
 import base64
 import datetime as dt
 import hashlib
+import re
 import time
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
@@ -46,9 +47,10 @@ from agent_hands.handoff.operator import (
     now,
 )
 from agent_hands.llm.base import Provider, ToolCall
-from agent_hands.policy import PolicyViolation
-from agent_hands.profile import AppProfile
-from agent_hands.redact import Redactor
+from agent_hands.evidence import mask_locators
+from agent_hands.policy import CommitGuard, PolicyViolation
+from agent_hands.profile import AppProfile, post_is_irreversible
+from agent_hands.redact import DEFAULT_PATTERNS, Redactor, compile_patterns, mask_cells
 from agent_hands.secrets import resolve_secret
 from agent_hands.surface.describe import describe, role_and_name
 from agent_hands.surface.locate import obscured_by, resolve, same_element
@@ -178,7 +180,11 @@ class DiscoveryAgent:
         self.page: Page = session.page  # type: ignore[assignment]
         self.params = self._bind(raw_params)
         self.secrets = {s.name: resolve_secret(s.ref) for s in spec.secrets}
-        self.redactor = Redactor()
+        # Everything persisted about a discovery run goes through this. Beyond the contract it learns
+        # every data-looking cell the model was shown (names, addresses, balances), because the
+        # model's own words can repeat them.
+        bare_amount = ("bare_amount", re.compile(r"\b\d{1,3}(?:,\d{3})*\.\d{2}\b"), "[AMOUNT]")
+        self.redactor = Redactor((*DEFAULT_PATTERNS, *compile_patterns(profile.pii_patterns), bare_amount))
         for p in spec.params:
             self.redactor.add(p.name, self.params[p.name], p.sensitivity)
         for name, v in self.secrets.items():
@@ -194,6 +200,10 @@ class DiscoveryAgent:
         self.capture = HumanCapture(self.lease, self.redactor)
         if operator is not None and session.context is not None:
             self.capture.install(session.context)
+        self.guard = CommitGuard(lambda path: post_is_irreversible(profile, path),
+                                 lambda: self.lease.owner == Owner.HUMAN)
+        if session.context is not None:
+            self.guard.install(session.context)
         self.trace: list[TraceStep] = []
         self.outputs: dict[str, Any] = {}
         self.turns: list[dict[str, Any]] = []
@@ -232,6 +242,11 @@ class DiscoveryAgent:
                 self._log_turn(turn_no, turn)
                 if turn.stop_reason == "refusal":
                     raise _Finish("refused", "the model declined the request")
+                if turn.stop_reason == "max_tokens":  # tool inputs may be truncated: never run them
+                    content = [self._result(c, "Your turn was cut off; nothing was executed. Try again, briefly.",
+                                            True) for c in turn.tool_calls] or [
+                        {"type": "text", "text": "Your turn was cut off. Continue, briefly."}]
+                    continue
                 if not turn.tool_calls:
                     if nudged:
                         raise _Finish("stuck", "the model stopped calling tools before done()")
@@ -258,6 +273,8 @@ class DiscoveryAgent:
             status, reason = f.status, f.reason
         except PolicyViolation as e:
             status, reason = "error", f"policy: {e.detail}"
+        except Exception as e:  # provider outage, browser error: still record what happened
+            status, reason = "error", self.redactor.scrub_exception(e)[:400]
         self.log.event("discovery_end", status=status, reason=reason, steps=len(self.trace))
         return DiscoveryResult(status, self.redactor.scrub(reason), self.trace, dict(self.outputs), self.turns, self.run_dir)
 
@@ -275,8 +292,31 @@ class DiscoveryAgent:
 
     # ------------------------------------------------------------ observation
 
+    def _learn_observed(self) -> None:
+        """Register every data-looking cell on screen as PII for persistence (see __init__)."""
+        for f in self.page.frames:
+            if f.is_detached():
+                continue
+            for line in visible_text(f).splitlines():
+                for raw, masked in zip(line.split("\t"), mask_cells(line).split("\t")):
+                    if masked.strip() == "▒" and len(raw.strip()) >= 3:
+                        value = norm(raw)
+                        variants = {value, value.lstrip("$ ")}
+                        variants |= {part.strip() for part in value.split(",") if len(part.strip()) >= 4}
+                        for v in variants:
+                            self.redactor.add("observed", v, Sensitivity.PII)
+
     def _observe(self, screenshot: bool = False) -> list[dict[str, Any]]:
-        snap = self.model_scrub.scrub(self.page.aria_snapshot(mode="ai", timeout=10_000))
+        snap = ""
+        for attempt in range(3):
+            try:
+                snap = self.model_scrub.scrub(self.page.aria_snapshot(mode="ai", timeout=10_000))
+                break
+            except Exception:
+                if attempt == 2:
+                    raise
+                self._settle()
+        self._learn_observed()
         if len(snap) > 40_000:
             snap = snap[:40_000] + "\n... (snapshot truncated)"
         digest = hashlib.sha256(snap.encode()).hexdigest()[:12]
@@ -291,7 +331,8 @@ class DiscoveryAgent:
 
     def _screenshot_block(self) -> dict[str, Any]:
         # The model sees the real page except inputs holding secrets; evidence copies mask far more.
-        png = self.page.screenshot(timeout=10_000, mask=self._secret_inputs(), mask_color="#222222")
+        masks = self._secret_inputs() + mask_locators(self.page, list(self.secrets.values()), structural=False)
+        png = self.page.screenshot(timeout=10_000, mask=masks, mask_color="#222222")
         self.log.screenshot(self.page, "observe", [([r.name for r in reg.frame if r.name], reg.css)
                                                    for reg in self.profile.sensitive_regions])
         return {"type": "image", "source": {"type": "base64", "media_type": "image/png",
@@ -374,9 +415,15 @@ class DiscoveryAgent:
                 raise ValueError(f"unknown secret '{args['secret']}'")
             return SecretValue(secret=args["secret"])
         literal = str(args["literal"])
-        for pname, pval in self.params.items():  # a literal equal to a param value is that param
+        for pname, pval in self.params.items():  # a literal equal to a param value IS that param
             if str(pval) == literal:
                 return ParamRef(param=pname)
+            if isinstance(pval, Decimal):
+                try:
+                    if Decimal(literal.replace("$", "").replace(",", "").strip()) == pval:
+                        return ParamRef(param=pname)
+                except InvalidOperation:
+                    pass
         return LiteralValue(literal=literal)
 
     def _resolve_value(self, v: Value) -> str:
@@ -412,6 +459,8 @@ class DiscoveryAgent:
         interstitial = self._is_interstitial(handle) if kind == ActionKind.CLICK else False
         if risk == Risk.IRREVERSIBLE and not self._approve(intent, role, name):
             return self._result(call, "A human rejected this irreversible action. Do not retry it; call give_up.", True)
+        if risk == Risk.IRREVERSIBLE:
+            self.guard.arm()
         before = self._frames_state()
         try:
             self.session.policy.require_action(kind, frame.url)
@@ -427,10 +476,18 @@ class DiscoveryAgent:
             elif kind == ActionKind.READ:
                 text = self._read(str(args["output"]), handle)
         except PolicyViolation as e:
+            self.guard.disarm()
             return self._result(call, f"Blocked by policy: {e.detail}", True)
         except Exception as e:
+            self.guard.disarm()
+            if risk == Risk.IRREVERSIBLE:  # it may have landed; never let the model click it again
+                raise _Finish("commit_state_unknown", f"the approved irreversible click failed mid-flight: "
+                                                      f"{self.redactor.scrub_exception(e)[:200]}") from None
             return self._result(call, f"Action failed: {self.redactor.scrub_exception(e)[:300]}", True)
         self._settle()
+        self.guard.disarm()
+        if self.guard.blocked:
+            raise _Finish("error", f"commit guard blocked an unapproved submit to {self.guard.blocked[-1]}")
         self.session.policy.audit_frames(self.page)
         step = TraceStep(
             index=len(self.trace), kind=kind, intent=intent, value=value,
@@ -488,8 +545,7 @@ class DiscoveryAgent:
             return False
         req = ApprovalRequest(run_id=self.run_id, step_id=f"trace-{len(self.trace)}", intent=intent,
                               target=f"{role} \"{name or ''}\"", bound_to=self.run_id,
-                              summary=self.redactor.scrub(f"{self.spec.title} with " + ", ".join(
-                                  f"{k}={v}" for k, v in self.params.items())))
+                              summary=self._approval_display())  # terminal only, never persisted
         decision = self.operator.approve(req)
         rec = {"step": req.step_id, "intent": intent, "target": req.target, "decision": decision.decision,
                "approver": decision.approver, "approved_at": decision.at, "channel": self.operator.name,
@@ -497,6 +553,15 @@ class DiscoveryAgent:
         self.approvals.append(rec)
         self.log.event("approval", **rec)
         return decision.decision == "approved"
+
+    def _approval_display(self) -> str:
+        shown = []
+        for spec in self.spec.params:
+            v = self.params[spec.name]
+            if spec.sensitivity == Sensitivity.PII and isinstance(v, str):
+                v = "•" * max(0, len(v) - 2) + v[-2:]
+            shown.append(f"{spec.name}={v}")
+        return f"{self.spec.title}: " + ", ".join(shown)
 
     def _human(self, call: ToolCall, reason: str) -> dict[str, Any]:
         if self.operator is None:

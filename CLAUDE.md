@@ -25,25 +25,32 @@ and documented. The discovery run in `evidence/` must be a real LLM run.
 
 Python 3.12, uv, Playwright (Chromium), pydantic v2, pytest. Keep dependencies small.
 LLM: Anthropic API, model `claude-opus-5-5`, set as a config value behind a provider interface.
+Irreversible steps are approved live by a human at the terminal (discovery) or by an explicit, run-bound caller
+approval (replay); unattended replay stops at them.
 
 ## Commands
 
-These are planned. Keep this section in step with what actually exists.
+Keep this section in step with what actually exists.
 
 ```
 uv sync                                   # install
 uv run playwright install chromium        # browser
 uv run pytest                             # tests (offline, fake LLM backend)
 uv run hands target                       # start the hostile target app
-uv run hands discover --goal "..."        # real LLM discovery run → artifact + evidence
-uv run hands replay <artifact> --param k=v [--fault name]
+uv run hands discover --spec specs/open_sub_account.json -p k=v ... --headed   # real LLM run
+uv run hands replay <artifact> -p k=v ... [--approve s13] [--fault name[:mode][:ms][@route]]
+uv run hands stability <artifact> -p k=v ... --approve s13 --runs 20
+uv run hands show <artifact>
 ```
 
 ## Hard rules
 
 - **Synthetic data only.** Fake members, fake account numbers, fake credentials. No real PII ever.
-- **No secrets in the repo.** `ANTHROPIC_API_KEY` is read from the environment only. Never print,
-  log or write it to a file, including evidence, traces, fixtures and test output.
+- **No secrets in the repo.** The Anthropic key is read only from the macOS Keychain (service
+  `anthropic-api-key`), inside the provider, when the live backend starts. If that read fails, stop
+  and tell me; never look for the key anywhere else (no env vars, no files, no ~/.zshenv).
+  Never print, log or write it, including evidence, traces, fixtures, exception messages and test
+  output.
 - **Never push without asking me first.** Commit locally after every step that works.
   Don't email anyone.
 - **Nothing outside the allowlist.** The agent and replay engine act only on allowlisted

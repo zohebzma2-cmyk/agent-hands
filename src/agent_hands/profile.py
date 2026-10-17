@@ -97,6 +97,11 @@ class AppProfile(Model):
         return Risk.SAFE, "no form submission"
 
 
+def post_is_irreversible(profile: AppProfile, path: str) -> bool:
+    risk, _ = profile.classify_click(name="", is_post_submit=True, form_action=path)
+    return risk == Risk.IRREVERSIBLE
+
+
 @cache
 def load_profile(name: str) -> AppProfile:
     text = resources.files("agent_hands.profiles").joinpath(f"{name}.json").read_text()

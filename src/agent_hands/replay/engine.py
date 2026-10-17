@@ -61,8 +61,8 @@ from agent_hands.handoff.operator import (
     Operator,
     now,
 )
-from agent_hands.policy import PolicyViolation
-from agent_hands.profile import AppProfile, ConditionSpec
+from agent_hands.policy import CommitGuard, PolicyViolation
+from agent_hands.profile import AppProfile, ConditionSpec, post_is_irreversible
 from agent_hands.redact import DEFAULT_PATTERNS, Redactor, compile_patterns
 from agent_hands.replay.result import (
     ApprovalRecord,
@@ -183,6 +183,11 @@ class ReplayEngine:
         if operator is not None:
             assert session.context is not None
             self.capture.install(session.context)
+        # Network backstop for the approval gate: an irreversible POST goes out only when armed.
+        self.guard = CommitGuard(lambda path: post_is_irreversible(profile, path),
+                                 lambda: self.lease.owner == Owner.HUMAN)
+        if session.context is not None:
+            self.guard.install(session.context)
         self.params: dict[str, Any] = {}
         self.secrets: dict[str, str] = {}
         self.outputs: dict[str, Any] = {}
@@ -333,10 +338,21 @@ class ReplayEngine:
                         expected="each irreversible step runs at most once", observed="the step was about to run again"))
                 self.log.screenshot(self.page, f"{step.id}-before-commit", self._masks())
                 self.commits[step.id] = "in_doubt"
-            self._act(step, handle)
+                self.guard.arm()
+            try:
+                self._act(step, handle)
+            finally:
+                if step.risk == Risk.IRREVERSIBLE:
+                    self.page.wait_for_timeout(0)  # let the route handler see the POST before disarming
+            if self.guard.blocked:
+                raise _Stop("failed", failure=Failure(
+                    kind=FailureKind.POLICY_DENIED, step_id=step.id, intent=step.intent,
+                    expected="irreversible submits only under an armed approval",
+                    observed=f"commit guard blocked a submit to {self.guard.blocked[-1]}"))
             self.session.policy.audit_frames(self.page)
         verdict = self._await_checkpoint(i, step)
         if step.risk == Risk.IRREVERSIBLE:
+            self.guard.disarm()
             self.commits[step.id] = "committed"
         self._record(step, "completed_by_human" if verdict == "completed" else "ok", resolution, t)
 

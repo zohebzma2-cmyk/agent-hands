@@ -146,3 +146,153 @@ def RunLogEvents(d: Path):  # noqa: N802
 def test_fake_provider_is_labelled():
     assert ScriptedFakeProvider([]).name == "fake"
     assert ActionKind.CLICK.value == "click"
+
+
+# --- second review: what the model says, what ships in the artifact, what the page sees ----------
+
+
+def test_model_narration_and_intents_are_scrubbed(sim, tmp_path):
+    chatty = happy_script()
+    chatty[6] = (chatty[6][0], chatty[6][1],
+                 {"text": "ADA SAMPLE lives at 1 Example Way; Share Draft shows 1,204.11 and base 812.40"})
+    chatty[3] = ("fill", lambda s: {"ref": ref_for(s, r"- textbox\b"), "intent": "Type 900001 into the search",
+                                    "param": "member_id"})
+    # names can only be scrubbed once the model has been shown them, i.e. after the member page
+    chatty[6] = ("read", lambda s: {"ref": ref_for(s, r'cell "\$812\.40"'), "output": "share_balance",
+                                    "intent": "Read ADA SAMPLE's base share"}, chatty[6][2])
+    res = run(sim, chatty, tmp_path)
+    assert res.error is None, res.error
+    blob = "".join(p.read_text() for p in tmp_path.rglob("*") if p.suffix in (".json", ".jsonl"))
+    for raw in ("ADA SAMPLE", "Example Way", "1,204.11", "812.40", "900001"):
+        assert raw not in blob, raw
+    intents = [s.intent for s in res.artifact.steps]
+    assert not any("900001" in i or "SAMPLE" in i for i in intents)
+
+
+def test_outcomes_bind_to_the_steps_where_they_happen(sim, tmp_path):
+    res = run(sim, happy_script(), tmp_path)
+    at = {o.code: o.at_steps for o in res.artifact.outcomes}
+    assert "s05" in at["member_not_found"]  # the Find click
+    assert "s13" in at["validation_rejected"]  # the submit
+    assert "s03" not in at["member_not_found"]  # not the sign-on click
+
+
+def test_identity_checkpoints_use_only_identifier_params(sim, tmp_path):
+    res = run(sim, happy_script(), tmp_path)
+    refs = {c.text.param for s in res.artifact.steps for c in s.expect.all_of
+            if c.kind == "text_visible" and hasattr(c.text, "param")}
+    assert refs == {"member_id"}
+
+
+def test_literal_amount_is_matched_to_the_param_by_value(sim, tmp_path):
+    script = happy_script()
+    script[10] = ("fill", lambda s: {"ref": ref_for(s, r"- textbox\b", 1), "intent": "Enter the deposit",
+                                     "literal": "$25.00"})
+    res = run(sim, script, tmp_path)
+    assert res.artifact.steps[10].action.value == ParamRef(param="initial_deposit")
+
+
+def test_unused_param_blocks_compilation(sim, tmp_path):
+    script = happy_script()
+    script[9] = ("fill", lambda s: {"ref": ref_for(s, r"- textbox\b"), "intent": "Enter the nickname",
+                                    "literal": "Something else"})
+    res = run(sim, script, tmp_path)
+    assert res.artifact is None and "never used" in res.error
+
+
+def test_truncated_turn_is_not_executed(sim, tmp_path):
+    script = [("click", lambda s: {"ref": ref_for(s, r'button "Sign On"'), "intent": "x"}, {"stop_reason": "max_tokens"}),
+              ("give_up", lambda s: {"reason": "x"})]
+    res = run(sim, script, tmp_path)
+    assert res.discovery.trace == []
+
+
+def test_provenance_records_the_models_that_served(sim, tmp_path):
+    res = run(sim, happy_script(), tmp_path)
+    assert res.artifact.provenance.models_served == ["scripted-fake"]
+
+
+def test_page_never_receives_secret_values(sim, tmp_path, monkeypatch):
+    from playwright.sync_api import Frame
+
+    from agent_hands.redact import clear_process_secrets, register_process_secret
+
+    register_process_secret("not-a-real-api-key-1234567890")
+    seen = []
+    orig = Frame.evaluate
+
+    def spy(self, expression, arg=None, *a, **k):
+        seen.append(repr(arg))
+        return orig(self, expression, arg, *a, **k)
+
+    monkeypatch.setattr(Frame, "evaluate", spy)
+    try:
+        run(sim, happy_script(), tmp_path)
+    finally:
+        clear_process_secrets()
+    blob = " ".join(seen)
+    assert "not-a-real-api-key" not in blob and "synthetic-teller-pass" not in blob and "teller01" not in blob
+
+
+def test_model_screenshots_mask_the_operator_banner(sim):
+    from browser_helpers import login
+
+    from agent_hands.evidence import mask_locators
+    from agent_hands.policy import Policy
+    from agent_hands.surface.web import BrowserSession
+
+    session = BrowserSession(policy=Policy(allowlist_for(sim.url)))
+    page = session.start()
+    try:
+        login(page, sim.url)
+        banner = page.frame(name="banner")
+        masks = mask_locators(page, ["teller01"], structural=False)
+        cell = banner.locator("td", has_text="teller01").last.element_handle()
+        handles = [h for m in masks for h in m.element_handles() if h.owner_frame() == banner]
+        assert any(h.evaluate("(m, c) => m.contains(c)", cell) for h in handles)
+    finally:
+        session.close()
+
+
+def test_commit_guard_blocks_unapproved_submits_but_not_the_human(sim):
+    from browser_helpers import login
+
+    from agent_hands.policy import CommitGuard, Policy
+    from agent_hands.profile import load_profile, post_is_irreversible
+    from agent_hands.surface.web import BrowserSession
+
+    sim.state.reset()
+    human = {"holds": False}
+    session = BrowserSession(policy=Policy(allowlist_for(sim.url)))
+    page = session.start()
+    guard = CommitGuard(lambda p: post_is_irreversible(load_profile("cu_core"), p), lambda: human["holds"])
+    guard.install(session.context)
+    try:
+        login(page, sim.url)
+        main = page.frame(name="main")
+        main.goto(sim.url + "/core/subacct.do?mid=900001")
+        main.select_option("select[name=f7]", label="Savings")
+        main.fill("input[name=f9]", "25.00")
+        main.evaluate("() => document.forms[0].submit()")  # not even a click on the button
+        page.wait_for_timeout(500)
+        assert guard.blocked == ["/core/subacct.do"] and sim.state.snapshot()["subaccounts"] == []
+        human["holds"] = True
+        main.goto(sim.url + "/core/subacct.do?mid=900001")
+        main.select_option("select[name=f7]", label="Savings")
+        main.fill("input[name=f9]", "25.00")
+        main.evaluate("() => document.forms[0].submit()")
+        page.wait_for_timeout(500)
+        assert len(sim.state.snapshot()["subaccounts"]) == 1
+    finally:
+        session.close()
+
+
+def test_stability_refuses_fake_artifacts_into_evidence(sim, tmp_path):
+    from agent_hands.cli import main
+    from agent_hands.evidence import EVIDENCE_ROOT
+
+    res = run(sim, happy_script(), tmp_path)
+    path = tmp_path / "fake-artifact.json"
+    path.write_text(res.artifact.canonical_json())
+    assert main(["stability", str(path), "--runs", "1", "--out", str(EVIDENCE_ROOT / "should-not-exist")]) == 1
+    assert not (EVIDENCE_ROOT / "should-not-exist").exists()

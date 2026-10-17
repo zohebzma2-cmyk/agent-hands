@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -19,25 +20,17 @@ from playwright.sync_api import Page
 
 from agent_hands.redact import Redactor
 
-# Cells to black out in evidence screenshots: anything that looks like data (digits, money, emails,
-# "LAST, FIRST"), any cell that follows a "Label:" cell, and any element showing a contract value.
-# Deny-by-default for values; labels, headings and buttons stay readable.
-_MASK_JS = r"""
-(values) => {
+# The page only ever reports cell texts back; matching against sensitive values happens here, in
+# Python. Values (and never secrets or the API key) are not passed into page JavaScript.
+_CELLS_JS = r"""
+() => Array.from(document.querySelectorAll('td, th')).map((c, i) => {
   const norm = s => (s || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
-  const valueish = /[\d$@,]/;
-  const cells = Array.from(document.querySelectorAll('td, th'));
-  const out = [];
-  cells.forEach((c, i) => {
-    if (c.querySelector('td, th')) return;  // only leaf cells
-    const t = norm(c.innerText);
-    if (!t) return;
-    const prev = c.previousElementSibling ? norm(c.previousElementSibling.innerText) : '';
-    if (valueish.test(t) || prev.endsWith(':') || values.some(v => v && t.includes(v))) out.push(i);
-  });
-  return out;
-}
+  if (c.querySelector('td, th')) return null;  // only leaf cells
+  return [i, norm(c.innerText), c.previousElementSibling ? norm(c.previousElementSibling.innerText) : ''];
+}).filter(Boolean)
 """
+_VALUEISH = re.compile(r"[\d$@,]")
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EVIDENCE_ROOT = REPO_ROOT / "evidence"
@@ -95,6 +88,15 @@ class RunLog:
         path.write_text(self.redactor.scrub(text))
         return path
 
+    def write_raw(self, name: str, text: str) -> Path | None:
+        """Verbatim write, for content that has already passed a redaction lint (artifacts)."""
+        if self.dir is None:
+            return None
+        path = self.dir / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+        return path
+
     def screenshot(self, page: Page, name: str, mask_css: list[tuple[list[str], str]] | None = None) -> str | None:
         """Masked screenshot: inputs, data-looking cells, contract values and ``mask_css`` regions."""
         if self.dir is None:
@@ -114,17 +116,27 @@ class RunLog:
         return str(path.relative_to(self.dir))
 
 
-def mask_locators(page: Page, values: list[str]) -> list:
-    """Locators for everything an evidence screenshot must hide (see ``_MASK_JS``)."""
+def mask_locators(page: Page, values: list[str], *, structural: bool = True) -> list:
+    """Locators for what a screenshot must hide.
+
+    Inputs always. Cells showing any of ``values``. With ``structural``, also every cell that looks
+    like data (digits, money, emails, "LAST, FIRST") or follows a "Label:" cell: deny by default for
+    values, while labels, headings and buttons stay readable.
+    """
     masks = []
     for f in page.frames:
         if f.is_detached():
             continue
         masks.append(f.locator("input:not([type=button]):not([type=submit]):not([type=hidden]), select"))
         try:
-            idx = f.evaluate(_MASK_JS, values)
+            cells = f.evaluate(_CELLS_JS)
         except Exception:
             continue
-        cells = f.locator("td, th")
-        masks.extend(cells.nth(i) for i in idx)
+        loc = f.locator("td, th")
+        for i, text, prev in cells:
+            if not text:
+                continue
+            hit = any(v and v in text for v in values)
+            if hit or (structural and (_VALUEISH.search(text) or (prev.endswith(":") and not text.endswith(":")))):
+                masks.append(loc.nth(i))
     return masks

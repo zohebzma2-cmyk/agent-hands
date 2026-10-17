@@ -61,16 +61,30 @@ def _path_glob(route: str) -> str:
     return route.split("?")[0] + "*"
 
 
-def _label_lines(before: list[str], after: list[str], banned: list[str]) -> list[str]:
+def _label_lines(before: list[str], after: list[str], banned: list[str], transient: list[str]) -> list[str]:
     seen = set(before)
     out = []
     for line in after:
         if line in seen or len(line) > 60 or _NOT_LABEL.search(line):
             continue
-        if any(b and b in line for b in banned):
+        if any(b and b in line for b in banned) or any(t and t in line for t in transient):
             continue
         out.append(line)
     return out
+
+
+def _sanitize_intent(t: TraceStep, params: dict[str, Any], scrub: Any) -> str:
+    """The model wrote the intent; it ships in the artifact. Values become {name}; anything else that
+    still looks like data falls back to a generated intent."""
+    text = t.intent.strip()
+    for k, v in sorted(params.items(), key=lambda kv: -len(str(kv[1]))):
+        if len(str(v)) >= 3:
+            text = text.replace(str(v), "{" + k + "}")
+    plain = re.sub(r"\{[a-z_]+\}", "", text)
+    if not text or _NOT_LABEL.search(plain) or scrub(plain) != plain or len(text) > 100:
+        verb = {"click": "Click", "fill": "Fill", "select": "Choose in", "read": "Read"}[t.kind.value]
+        return f"{verb} {_target_desc(t, params, [])}"
+    return text
 
 
 def _target_desc(t: TraceStep, params: dict[str, Any], banned: list[str]) -> str:
@@ -90,7 +104,7 @@ def _target_desc(t: TraceStep, params: dict[str, Any], banned: list[str]) -> str
 
 
 def _click_checkpoint(
-    t: TraceStep, banned: list[str], identity: dict[str, str]
+    t: TraceStep, banned: list[str], identity: dict[str, str], transient: list[str]
 ) -> tuple[list[dict[str, Any]], str]:
     conds: list[dict[str, Any]] = []
     why = []
@@ -107,7 +121,7 @@ def _click_checkpoint(
     for name in candidates:
         if name not in t.after:
             continue
-        lines = _label_lines(t.before.get(name, ("", []))[1], t.after[name][1], banned)
+        lines = _label_lines(t.before.get(name, ("", []))[1], t.after[name][1], banned, transient)
         if lines:
             conds.append({"kind": "text_visible", "frame": frames_for(name),
                           "text": {"literal": lines[0]}, "match": "contains"})
@@ -140,15 +154,23 @@ def compile_trace(
     run_id: str,
     provider: str,
     model: str,
+    models_served: list[str] | None = None,
+    scrub: Any = None,
 ) -> tuple[CapabilityArtifact, CompileReport]:
+    scrub = scrub or (lambda x: x)
     report = CompileReport()
     banned = [str(v) for v in list(params.values()) + list(outputs.values())]
-    identity = {p.name: str(params[p.name]) for p in spec.params
-                if p.sensitivity.value == "pii" and len(str(params[p.name])) >= 3}
+    identity = {p.name: str(params[p.name]) for p in spec.params if p.identifies_record}
+    # Text that belongs to interstitials, errors and outcomes must never become a step checkpoint.
+    transient = [c.text.literal for cond in profile.conditions for c in cond.detect
+                 if hasattr(c, "text") and isinstance(c.text, LiteralValue)]
+    transient += [c.text.literal for o in profile.outcomes for c in o.detect
+                  if hasattr(c, "text") and isinstance(c.text, LiteralValue)]
     kept: list[TraceStep] = []
     for t in trace:
         if t.interstitial:
-            report.dropped.append({"trace_index": t.index, "intent": t.intent, "why": "known interstitial dismissal"})
+            report.dropped.append({"trace_index": t.index, "intent": _sanitize_intent(t, params, scrub),
+                                   "why": "known interstitial dismissal"})
         else:
             kept.append(t)
     if not kept:
@@ -191,11 +213,12 @@ def compile_trace(
             expect = {"all_of": [{"kind": "element_present", "target": target}], "timeout_ms": DEFAULT_TIMEOUT_MS}
             why = "value element present"
         else:
-            conds, why = _click_checkpoint(t, banned, identity)
+            conds, why = _click_checkpoint(t, banned, identity, transient)
             navigated = any(c["kind"] == "route_matches" for c in conds)
             expect = {"all_of": conds, "timeout_ms": NAV_TIMEOUT_MS if navigated else DEFAULT_TIMEOUT_MS}
+        intent = _sanitize_intent(t, params, scrub)
         step: dict[str, Any] = {
-            "id": sid, "phase": "login" if i <= login_end else "task", "intent": t.intent, "action": action,
+            "id": sid, "phase": "login" if i <= login_end else "task", "intent": intent, "action": action,
             "target": target, "risk": t.risk.value, "expect": expect,
             "provenance": {"run_id": run_id, "trace_index": t.index},
         }
@@ -203,7 +226,7 @@ def compile_trace(
             step["resume_anchor"] = f"s{first_task + 1:02d}"
         steps.append(step)
         report.steps.append({
-            "id": sid, "intent": t.intent, "risk": t.risk.value, "risk_note": t.risk_note,
+            "id": sid, "intent": intent, "risk": t.risk.value, "risk_note": t.risk_note,
             "strategies": [s.kind for s in t.strategies], "rejected": [list(r) for r in t.rejected],
             "checkpoint": why,
         })
@@ -212,12 +235,19 @@ def compile_trace(
     last_click = next((s for s in reversed(steps) if s["action"]["kind"] == "click"), None)
     success = last_click["expect"] if last_click else steps[-1]["expect"]
 
+    def routes_touched(t: TraceStep) -> list[str]:
+        acting = t.frame_path[-1].name if t.frame_path else "top"
+        out = [t.before.get(acting or "top", ("", []))[0]]
+        out += [after for name, (after, _) in t.after.items()
+                if name in t.before and t.before[name][0].split("?")[0] != after.split("?")[0]]
+        return [r for r in out if r]
+
     outcomes = []
     for tpl in profile.outcomes:
         at = [
             steps[i]["id"] for i, t in enumerate(kept)
             if t.kind == ActionKind.CLICK
-            and any(fnmatch(route, r) for route, _ in t.after.values() for r in tpl.applies_to_routes)
+            and any(fnmatch(route, r) for route in routes_touched(t) for r in tpl.applies_to_routes)
         ]
         if at:
             o = tpl.model_dump(mode="json", exclude_none=True)
@@ -226,9 +256,9 @@ def compile_trace(
             outcomes.append(o)
 
     used_params = {t.value.param for t in kept if isinstance(t.value, ParamRef)}
-    for p in spec.params:
-        if p.name not in used_params:
-            report.warnings.append(f"param '{p.name}' is declared but no step uses it")
+    unused = [p.name for p in spec.params if p.name not in used_params]
+    if unused:  # a declared input the flow ignores would silently hard-code whatever discovery typed
+        raise CompileError(f"declared params never used by any step: {unused}")
     read_outputs = {t.output for t in kept if t.kind == ActionKind.READ}
     missing = [o.name for o in spec.outputs if o.name not in read_outputs]
     if missing:
@@ -254,6 +284,7 @@ def compile_trace(
         "success": success,
         "provenance": {"compiler_version": COMPILER_VERSION,
                        "created_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
-                       "discovered_by_run": run_id, "provider": provider, "model": model},
+                       "discovered_by_run": run_id, "provider": provider, "model": model,
+                       "models_served": sorted(models_served or [])},
     }
     return CapabilityArtifact.model_validate(data), report

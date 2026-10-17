@@ -204,6 +204,15 @@ def test_irreversible_step_needs_two_agreeing_strategies(artifact_dict):
         load(artifact_dict)
 
 
+def test_irreversible_agreement_cannot_be_only_positional(artifact_dict):
+    artifact_dict["steps"][7]["target"]["strategies"] = [
+        {"kind": "css", "selector": "input[type=submit]"},
+        {"kind": "xpath", "xpath": "//input[@type='submit']"},
+    ]
+    with pytest.raises(ValidationError, match="semantic"):
+        load(artifact_dict)
+
+
 def test_min_agreement_cannot_exceed_strategy_count(artifact_dict):
     artifact_dict["steps"][3]["target"]["min_agreement"] = 3
     with pytest.raises(ValidationError, match="min_agreement"):

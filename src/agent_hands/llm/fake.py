@@ -16,7 +16,9 @@ from agent_hands.llm.base import ToolCall, Turn
 
 # A script entry: (tool name, input builder). The builder gets the latest observation text and
 # returns the tool input; use ``ref_for`` to find an element by its snapshot line.
-Script = list[tuple[str, Callable[[str], dict[str, Any]]]]
+# An optional third element sets the turn's free text and stop_reason, e.g. {"text": "...",
+# "stop_reason": "max_tokens"}, to test what happens to model narration and truncated turns.
+Script = list[tuple[Any, ...]]
 
 
 def ref_for(snapshot: str, pattern: str, nth: int = 0) -> str:
@@ -46,9 +48,11 @@ class ScriptedFakeProvider:
         )
         if self.i >= len(self.script):
             return Turn([], "script exhausted", "end_turn", self.model)
-        name, build = self.script[self.i]
+        name, build, *extra = self.script[self.i]
+        opts = extra[0] if extra else {}
         self.i += 1
-        return Turn([ToolCall(f"fake-{self.i}", name, build(observation))], "", "tool_use", self.model, f"fake-msg-{self.i}")
+        return Turn([ToolCall(f"fake-{self.i}", name, build(observation))], opts.get("text", ""),
+                    opts.get("stop_reason", "tool_use"), self.model, f"fake-msg-{self.i}")
 
 
 def _tool_text(block: Any) -> str:

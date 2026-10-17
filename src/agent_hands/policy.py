@@ -16,6 +16,7 @@ New windows are not part of the model at all: popups are closed and recorded.
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from urllib.parse import urlparse
@@ -115,3 +116,45 @@ class Policy:
                 p.close()
 
         context.on("page", on_page)
+
+
+class CommitGuard:
+    """A network-level backstop for the approval gate.
+
+    Any document POST whose form action the profile classifies as irreversible is aborted unless an
+    approval has armed the guard for exactly one such request. It doesn't depend on which element was
+    clicked, so a click on a cell, a <b> inside a <button>, or a javascript: link that submits the
+    form can't commit without approval. A human holding the session lease is the exception: their
+    actions are theirs (and are captured).
+    """
+
+    def __init__(self, classify: Callable[[str], bool], human_holds: Callable[[], bool]) -> None:
+        self._irreversible = classify  # path -> bool
+        self._human_holds = human_holds
+        self._armed = 0
+        self.blocked: list[str] = []
+        self.passed: list[str] = []
+
+    def arm(self) -> None:
+        self._armed = 1
+
+    def disarm(self) -> None:
+        self._armed = 0
+
+    def install(self, context: BrowserContext) -> None:
+        def guard(route: Route) -> None:
+            req = route.request
+            path = urlparse(req.url).path
+            if req.method == "POST" and req.resource_type == "document" and self._irreversible(path):
+                if self._human_holds():
+                    self.passed.append(f"human:{path}")
+                elif self._armed > 0:
+                    self._armed -= 1
+                    self.passed.append(path)
+                else:
+                    self.blocked.append(path)
+                    route.abort("blockedbyclient")
+                    return
+            route.fallback()
+
+        context.route("**/*", guard)  # registered after the allowlist route, so it runs first

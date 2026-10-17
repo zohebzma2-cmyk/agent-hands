@@ -137,7 +137,8 @@
   "params": [
     {
       "description": "Six-digit member number",
-      "example": "900001",
+      "example": "900004",
+      "identifies_record": true,
       "name": "member_id",
       "pattern": "^9\\d{5}$",
       "required": true,
@@ -151,6 +152,7 @@
         "Holiday Club",
         "Certificate"
       ],
+      "identifies_record": false,
       "name": "account_type",
       "required": true,
       "sensitivity": "internal",
@@ -158,7 +160,8 @@
     },
     {
       "description": "Nickname shown on statements",
-      "example": "Rainy day",
+      "example": "Holiday fund",
+      "identifies_record": false,
       "max_length": 20,
       "name": "nickname",
       "pattern": "^[A-Za-z0-9 ]{1,20}$",
@@ -169,6 +172,7 @@
     {
       "description": "Opening deposit in USD, cash",
       "example": "25.00",
+      "identifies_record": false,
       "maximum": "5000.00",
       "minimum": "5.00",
       "name": "initial_deposit",
@@ -183,6 +187,7 @@
   "provenance": {
     "compiler_version": "hand-written",
     "created_at": "2026-10-17T00:00:00Z",
+    "models_served": [],
     "validated_runs": []
   },
   "schema_version": "1.0",

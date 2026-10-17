@@ -7,18 +7,74 @@
   "profile_versions": ">=4.2,<5",
   "entry_route": "/core/login.do",
   "params": [
-    {"name": "member_id", "type": "string", "pattern": "^9\\d{5}$", "sensitivity": "pii", "description": "Six-digit member number", "example": "900001"},
-    {"name": "account_type", "type": "enum", "enum": ["Savings", "Holiday Club", "Certificate"], "sensitivity": "internal", "description": "Sub-account product"},
-    {"name": "nickname", "type": "string", "pattern": "^[A-Za-z0-9 ]{1,20}$", "max_length": 20, "sensitivity": "internal", "description": "Nickname shown on statements", "example": "Rainy day"},
-    {"name": "initial_deposit", "type": "decimal", "minimum": "5.00", "maximum": "5000.00", "sensitivity": "pii", "description": "Opening deposit in USD, from cash", "example": "25.00"}
+    {
+      "name": "member_id",
+      "type": "string",
+      "pattern": "^9\\d{5}$",
+      "sensitivity": "pii",
+      "description": "Six-digit member number",
+      "example": "900004",
+      "identifies_record": true
+    },
+    {
+      "name": "account_type",
+      "type": "enum",
+      "enum": [
+        "Savings",
+        "Holiday Club",
+        "Certificate"
+      ],
+      "sensitivity": "internal",
+      "description": "Sub-account product"
+    },
+    {
+      "name": "nickname",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9 ]{1,20}$",
+      "max_length": 20,
+      "sensitivity": "internal",
+      "description": "Nickname shown on statements",
+      "example": "Holiday fund"
+    },
+    {
+      "name": "initial_deposit",
+      "type": "decimal",
+      "minimum": "5.00",
+      "maximum": "5000.00",
+      "sensitivity": "pii",
+      "description": "Opening deposit in USD, from cash",
+      "example": "40.00"
+    }
   ],
   "secrets": [
-    {"name": "teller_username", "ref": "sim:teller_username", "description": "Teller sign-on ID"},
-    {"name": "teller_password", "ref": "sim:teller_password", "description": "Teller sign-on password"}
+    {
+      "name": "teller_username",
+      "ref": "sim:teller_username",
+      "description": "Teller sign-on ID"
+    },
+    {
+      "name": "teller_password",
+      "ref": "sim:teller_password",
+      "description": "Teller sign-on password"
+    }
   ],
   "outputs": [
-    {"name": "share_balance", "type": "decimal", "sensitivity": "pii", "redaction": "mask", "description": "Base share balance before opening"},
-    {"name": "confirmation_number", "type": "string", "sensitivity": "internal", "redaction": "none", "description": "Confirmation number of the new sub-account"}
+    {
+      "name": "share_balance",
+      "type": "decimal",
+      "sensitivity": "pii",
+      "redaction": "mask",
+      "description": "Base share balance before opening"
+    },
+    {
+      "name": "confirmation_number",
+      "type": "string",
+      "sensitivity": "internal",
+      "redaction": "none",
+      "description": "Confirmation number of the new sub-account"
+    }
   ],
-  "preconditions": ["Teller credentials with sub-account authority"]
+  "preconditions": [
+    "Teller credentials with sub-account authority"
+  ]
 }

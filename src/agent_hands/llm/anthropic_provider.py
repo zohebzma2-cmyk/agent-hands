@@ -14,6 +14,7 @@ recorded per turn in the evidence.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import anthropic
@@ -23,6 +24,7 @@ from agent_hands.redact import register_process_secret
 from agent_hands.secrets import SecretUnavailable, keychain_read
 
 KEYCHAIN_SERVICE = "anthropic-api-key"
+API_BASE_URL = "https://api.anthropic.com"
 
 
 class AnthropicProvider:
@@ -45,7 +47,10 @@ class AnthropicProvider:
                 "No other key source is consulted."
             ) from None
         register_process_secret(key)
-        self._client = anthropic.Anthropic(api_key=key, max_retries=2, timeout=300.0)
+        for var in ("ANTHROPIC_BASE_URL", "ANTHROPIC_CUSTOM_HEADERS"):
+            if os.environ.get(var):  # the SDK would honour these and send the key elsewhere
+                raise ProviderUnavailable(f"{var} is set; refusing to send the Keychain key anywhere but the API")
+        self._client = anthropic.Anthropic(api_key=key, base_url=API_BASE_URL, max_retries=2, timeout=300.0)
         del key
         self.system = ""
         self.tools: list[dict[str, Any]] = []

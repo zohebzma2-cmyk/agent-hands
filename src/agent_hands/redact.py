@@ -80,6 +80,7 @@ class Redactor:
     def __init__(self, patterns: Sequence[Pattern] = DEFAULT_PATTERNS) -> None:
         self._patterns = tuple(patterns)
         self._values: dict[str, str] = {}
+        self._lower: dict[str, str] = {}
         self._compiled: re.Pattern[str] | None = None
         self._compiled_for: frozenset[str] = frozenset()
 
@@ -110,6 +111,7 @@ class Redactor:
         token = f"[{_TOKEN[sensitivity]}:{name}]"
         for rendering in _renderings(value):
             self._values[rendering] = token
+            self._lower.setdefault(rendering.lower(), token)
         self._compiled = None
 
     def _matcher(self) -> re.Pattern[str] | None:
@@ -119,7 +121,9 @@ class Redactor:
                 self._compiled = None
             else:
                 ordered = sorted(keys, key=len, reverse=True)  # longest first wins overlaps
-                self._compiled = re.compile("|".join(re.escape(k) for k in ordered))
+                # whole tokens only (no eating the middle of a word), any case ("Ada Sample")
+                alts = "|".join(re.escape(k) for k in ordered)
+                self._compiled = re.compile(f"(?<![A-Za-z0-9])(?:{alts})(?![A-Za-z0-9])", re.IGNORECASE)
             self._compiled_for = keys
         return self._compiled
 
@@ -132,7 +136,7 @@ class Redactor:
             return text
         matcher = self._matcher()
         if matcher is not None:
-            text = matcher.sub(lambda m: self._values.get(m.group(), "[SECRET]"), text)
+            text = matcher.sub(lambda m: self._lower.get(m.group().lower(), "[SECRET]"), text)
         for _, rx, repl in self._patterns:
             text = rx.sub(repl, text)
         return text
@@ -173,12 +177,12 @@ def mask_cells(text: str) -> str:
         masked, prev = [], ""
         for cell in cells:
             c = cell.strip()
-            if c and (_VALUEISH.search(c) or prev.endswith(":")):
+            label = c.endswith(":")
+            if c and (_VALUEISH.search(c) or (prev.endswith(":") and not label)):
                 masked.append("▒")
             else:
                 masked.append(cell)
-            if c:
-                prev = c
+            prev = c  # the immediately preceding cell, even if empty (an input sits there)
         out_lines.append("\t".join(masked))
     return "\n".join(out_lines)
 

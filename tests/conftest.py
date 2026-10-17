@@ -64,7 +64,8 @@ EXAMPLE = {
             "pattern": r"^9\d{5}$",
             "sensitivity": "pii",
             "description": "Six-digit member number",
-            "example": "900001",
+            "example": "900004",
+            "identifies_record": True,
         },
         {
             "name": "account_type",

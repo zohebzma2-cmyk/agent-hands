@@ -208,6 +208,12 @@ def cmd_replay(args: argparse.Namespace) -> int:
 
 def cmd_stability(args: argparse.Namespace) -> int:
     artifact = CapabilityArtifact.model_validate_json(Path(args.artifact).read_text())
+    if args.out and artifact.provenance.provider == "fake":
+        from agent_hands.evidence import EVIDENCE_ROOT
+
+        if Path(args.out).resolve().is_relative_to(EVIDENCE_ROOT.resolve()):
+            print("refusing: artifacts from the fake backend can't produce evidence", file=sys.stderr)
+            return 1
     target = Target(args)
     rows, prints = [], []
     try:
