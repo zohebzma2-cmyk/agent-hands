@@ -147,6 +147,15 @@ def test_retryable_follows_kind(kind, retryable):
     assert json.loads(f.model_dump_json())["retryable"] is retryable
 
 
+def test_nothing_is_retryable_after_a_commit():
+    f = Failure(kind=FailureKind.SESSION_UNRECOVERABLE, step_id="s14", expected="x", observed="y", after_commit=True)
+    assert f.retryable is False
+
+
+def test_commit_state_defaults_to_none():
+    assert Succeeded(**COMMON, steps=[], outputs={}).commit_state == "none"
+
+
 # --- drift signal -----------------------------------------------------------
 
 

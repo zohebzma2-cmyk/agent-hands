@@ -75,6 +75,7 @@ class AppProfile(Model):
     outcomes: list[OutcomeTemplate]
     risk_rules: list[RiskRule]
     sensitive_regions: list[SensitiveRegion] = []
+    pii_patterns: list[tuple[str, str]] = []  # (name, regex) for the vendor's identifier formats
 
     def condition(self, ref: str) -> ConditionSpec:
         for c in self.conditions:

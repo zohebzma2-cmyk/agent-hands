@@ -231,6 +231,18 @@ class ElementAbsent(Model):
     target: TargetSpec
 
 
+class ValueEquals(Model):
+    """A form control currently holds ``value`` (input value, or a select's chosen option label).
+
+    The checkpoint for fill/select steps: legacy apps reformat or swallow keystrokes often enough
+    that "I typed it" isn't evidence.
+    """
+
+    kind: Literal["value_equals"]
+    target: TargetSpec
+    value: Value
+
+
 class RouteMatches(Model):
     kind: Literal["route_matches"]
     frame: FrameScope = []
@@ -238,7 +250,7 @@ class RouteMatches(Model):
 
 
 Condition = Annotated[
-    Union[TextVisible, ElementPresent, ElementAbsent, RouteMatches],
+    Union[TextVisible, ElementPresent, ElementAbsent, ValueEquals, RouteMatches],
     Field(discriminator="kind"),
 ]
 
@@ -486,8 +498,12 @@ class CapabilityArtifact(Model):
         for i, s in enumerate(self.steps):
             if s.action.kind == ActionKind.READ and s.action.output not in outputs:
                 raise ValueError(f"step {s.id} reads unknown output '{s.action.output}'")
-            if s.resume_anchor is not None and index.get(s.resume_anchor, i + 1) > i:
-                raise ValueError(f"step {s.id}: resume_anchor must name this or an earlier step")
+            if s.resume_anchor is not None:
+                a = index.get(s.resume_anchor, i + 1)
+                if a > i:
+                    raise ValueError(f"step {s.id}: resume_anchor must name this or an earlier step")
+                if any(self.steps[k].risk == Risk.IRREVERSIBLE for k in range(a, i)):
+                    raise ValueError(f"step {s.id}: resume_anchor {s.resume_anchor} would re-run an irreversible step")
             if s.risk == Risk.IRREVERSIBLE and (s.target is None or s.target.min_agreement < 2):
                 raise ValueError(f"irreversible step {s.id} needs min_agreement >= 2")
             if RISK_ORDER[s.risk] > RISK_ORDER[self.capability.risk]:

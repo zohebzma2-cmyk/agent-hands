@@ -6,29 +6,76 @@
     {
       "id": "cu_core.server_error@1",
       "description": "The app server returned its HTTP 500 error page.",
-      "detect": [{"kind": "text_visible", "frame": "any", "text": {"literal": "HTTP Status 500"}, "match": "contains"}],
+      "detect": [
+        {
+          "kind": "text_visible",
+          "frame": "any",
+          "text": {
+            "literal": "HTTP Status 500"
+          },
+          "match": "contains"
+        }
+      ],
       "handler": "retry",
       "budget": 2,
-      "backoff_ms": [500, 1500]
+      "backoff_ms": [
+        500,
+        1500
+      ]
     },
     {
       "id": "cu_core.session_expired@1",
       "description": "The session timed out and the app bounced to the sign-on page.",
-      "detect": [{"kind": "text_visible", "frame": "any", "text": {"literal": "Your session has expired"}, "match": "contains"}],
+      "detect": [
+        {
+          "kind": "text_visible",
+          "frame": "any",
+          "text": {
+            "literal": "Your session has expired"
+          },
+          "match": "contains"
+        }
+      ],
       "handler": "re_login",
       "budget": 1
     },
     {
       "id": "cu_core.announcement@1",
       "description": "The vendor's 'System Announcement' interstitial covers the page until acknowledged.",
-      "detect": [{"kind": "text_visible", "frame": "any", "text": {"literal": "System Announcement"}, "match": "contains"}],
+      "detect": [
+        {
+          "kind": "text_visible",
+          "frame": "any",
+          "text": {
+            "literal": "System Announcement"
+          },
+          "match": "contains"
+        }
+      ],
       "handler": "dismiss",
       "dismiss": {
         "description": "Acknowledge link on the announcement",
-        "frame": [{"name": "main"}],
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
         "strategies": [
-          {"kind": "role", "role": "link", "name": {"literal": "Acknowledge"}, "match": "exact"},
-          {"kind": "text", "text": {"literal": "Acknowledge"}, "match": "exact"}
+          {
+            "kind": "role",
+            "role": "link",
+            "name": {
+              "literal": "Acknowledge"
+            },
+            "match": "exact"
+          },
+          {
+            "kind": "text",
+            "text": {
+              "literal": "Acknowledge"
+            },
+            "match": "exact"
+          }
         ],
         "min_agreement": 1
       },
@@ -39,48 +86,153 @@
     {
       "code": "member_not_found",
       "description": "The search returned no member for the given number.",
-      "detect": [{"kind": "text_visible", "frame": "any", "text": {"literal": "(CL-1404)"}, "match": "contains"}],
-      "applies_to_routes": ["/core/search.do*", "/core/member.do*"],
+      "detect": [
+        {
+          "kind": "text_visible",
+          "frame": "any",
+          "text": {
+            "literal": "(CL-1404)"
+          },
+          "match": "contains"
+        }
+      ],
+      "applies_to_routes": [
+        "/core/search.do*",
+        "/core/member.do*"
+      ],
       "message_from": {
         "description": "Red error line",
-        "frame": [{"name": "main"}],
-        "strategies": [{"kind": "css", "selector": "font[color='#CC0000'] b"}],
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "strategies": [
+          {
+            "kind": "css",
+            "selector": "font[color='#CC0000'] b"
+          }
+        ],
         "min_agreement": 1
       }
     },
     {
       "code": "permission_denied",
       "description": "The signed-on teller is not authorized for this function.",
-      "detect": [{"kind": "text_visible", "frame": "any", "text": {"literal": "(CL-0403)"}, "match": "contains"}],
-      "applies_to_routes": ["/core/subacct.do*"],
+      "detect": [
+        {
+          "kind": "text_visible",
+          "frame": "any",
+          "text": {
+            "literal": "(CL-0403)"
+          },
+          "match": "contains"
+        }
+      ],
+      "applies_to_routes": [
+        "/core/subacct.do*"
+      ],
       "message_from": {
         "description": "Red error line",
-        "frame": [{"name": "main"}],
-        "strategies": [{"kind": "css", "selector": "font[color='#CC0000'] b"}],
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "strategies": [
+          {
+            "kind": "css",
+            "selector": "font[color='#CC0000'] b"
+          }
+        ],
         "min_agreement": 1
       }
     },
     {
       "code": "validation_rejected",
       "description": "The app rejected the submitted values; nothing was committed.",
-      "detect": [{"kind": "text_visible", "frame": "any", "text": {"literal": "(CL-22"}, "match": "contains"}],
-      "applies_to_routes": ["/core/subacct.do*"],
+      "detect": [
+        {
+          "kind": "text_visible",
+          "frame": "any",
+          "text": {
+            "literal": "(CL-22"
+          },
+          "match": "contains"
+        }
+      ],
+      "applies_to_routes": [
+        "/core/subacct.do*"
+      ],
       "message_from": {
         "description": "Red error line",
-        "frame": [{"name": "main"}],
-        "strategies": [{"kind": "css", "selector": "font[color='#CC0000'] b"}],
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "strategies": [
+          {
+            "kind": "css",
+            "selector": "font[color='#CC0000'] b"
+          }
+        ],
         "min_agreement": 1
       }
     }
   ],
   "risk_rules": [
-    {"form_action": "/core/login.do*", "risk": "safe", "note": "sign-on posts credentials but changes nothing"},
-    {"form_action": "/core/subacct.do*", "risk": "irreversible", "note": "opens a sub-account in the system of record"},
-    {"form_action": "/core/override.do*", "risk": "irreversible", "note": "supervisor override is a human-only action"},
-    {"name_pattern": "(?i)^(sign off|log ?out)$", "risk": "reversible", "note": "ends the session"}
+    {
+      "form_action": "/core/login.do*",
+      "risk": "safe",
+      "note": "sign-on posts credentials but changes nothing"
+    },
+    {
+      "form_action": "/core/subacct.do*",
+      "risk": "irreversible",
+      "note": "opens a sub-account in the system of record"
+    },
+    {
+      "form_action": "/core/override.do*",
+      "risk": "irreversible",
+      "note": "supervisor override is a human-only action"
+    },
+    {
+      "name_pattern": "(?i)^(sign off|log ?out)$",
+      "risk": "reversible",
+      "note": "ends the session"
+    }
   ],
   "sensitive_regions": [
-    {"frame": [{"name": "main"}], "css": "td:has(> b) + td"},
-    {"frame": [{"name": "main"}], "css": "td[align=right]"}
+    {
+      "frame": [
+        {
+          "name": "main"
+        }
+      ],
+      "css": "td:has(> b) + td"
+    },
+    {
+      "frame": [
+        {
+          "name": "main"
+        }
+      ],
+      "css": "td[align=right]"
+    },
+    {
+      "frame": [
+        {
+          "name": "banner"
+        }
+      ],
+      "css": "td[align=right]"
+    }
+  ],
+  "pii_patterns": [
+    [
+      "member_number",
+      "\\b9\\d{5}\\b"
+    ]
   ]
 }

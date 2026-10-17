@@ -76,9 +76,9 @@ FAULTS: dict[str, str] = {
     "permission_denied": "Open sub-account page says the teller lacks authority (business outcome)",
     "announcement": "A known 'System Announcement' overlay covers member detail (recoverable)",
     "unknown_dialog": "A 'Supervisor Override' overlay needs a supervisor PIN (escalate to a human)",
-    "session_expired": "The session is dropped on the next member-detail load (recoverable: re-login)",
-    "slow": "Member detail responds after a delay (ms, default 3000) (recoverable: wait)",
-    "http500": "Member detail returns HTTP 500 (recoverable on a safe step: retry)",
+    "session_expired": "The session is dropped on the next load of a page (at=, default member detail) (re-login)",
+    "slow": "A page (at=, default member detail) responds after a delay (ms, default 3000) (recoverable)",
+    "http500": "A page (at=, default member detail) returns HTTP 500 (recoverable on a safe step: retry)",
     "http500_after_commit": "Sub-account submit commits, then returns HTTP 500 (commit state unknown)",
 }
 
@@ -89,6 +89,7 @@ FAULTS: dict[str, str] = {
 class Fault:
     mode: str = "once"  # "once" fires a single time, "always" until cleared
     ms: int = 3000
+    at: str = "/core/member.do"  # for page-level faults (slow, session_expired, http500): which GET route
     fired: int = 0
 
 
@@ -117,13 +118,14 @@ class SimState:
                 if name not in FAULTS:
                     raise ValueError(f"unknown fault {name!r}")
                 cfg = cfg if isinstance(cfg, dict) else {}
-                self.faults[name] = Fault(mode=cfg.get("mode", "once"), ms=int(cfg.get("ms", 3000)))
+                self.faults[name] = Fault(mode=cfg.get("mode", "once"), ms=int(cfg.get("ms", 3000)),
+                                          at=cfg.get("at", "/core/member.do"))
 
-    def take(self, name: str) -> Fault | None:
+    def take(self, name: str, path: str | None = None) -> Fault | None:
         """Return the fault if it should fire now, consuming it if it's a one-shot."""
         with self.lock:
             f = self.faults.get(name)
-            if f is None or (f.mode == "once" and f.fired):
+            if f is None or (f.mode == "once" and f.fired) or (path is not None and path != f.at):
                 return None
             f.fired += 1
             return f
@@ -131,7 +133,7 @@ class SimState:
     def snapshot(self) -> dict[str, Any]:
         with self.lock:
             return {
-                "faults": {k: {"mode": v.mode, "ms": v.ms, "fired": v.fired} for k, v in self.faults.items()},
+                "faults": {k: {"mode": v.mode, "ms": v.ms, "at": v.at, "fired": v.fired} for k, v in self.faults.items()},
                 "subaccounts": list(self.subaccounts),
                 "sessions": len(self.sessions),
             }
@@ -450,6 +452,15 @@ class AppHandler(BaseHTTPRequestHandler):
             ("GET", "/core/confirm.do"): lambda: self.confirm(q),
         }
         h = handlers.get((method, path))
+        if h is not None and method == "GET":
+            if (f := self.st.take("slow", path)) is not None:
+                time.sleep(f.ms / 1000)
+            if self.st.take("session_expired", path):
+                with self.st.lock:
+                    self.st.sessions.pop(sid or "", None)
+                return self.send(login_page(self.t, "Your session has expired. Please sign on again."))
+            if self.st.take("http500", path):
+                return self.send(error_500(), status=500)
         if h is None:
             return self.send(page(error_line("Page not found. (CL-0404)")), status=404)
         h()
@@ -479,14 +490,6 @@ class AppHandler(BaseHTTPRequestHandler):
         self.send(search_page(self.t, q, hits, not hits))
 
     def member(self, sid: str | None, sess: Session, q: dict[str, str]) -> None:
-        if (f := self.st.take("slow")) is not None:
-            time.sleep(f.ms / 1000)
-        if self.st.take("session_expired"):
-            with self.st.lock:
-                self.st.sessions.pop(sid or "", None)
-            return self.send(login_page(self.t, "Your session has expired. Please sign on again."))
-        if self.st.take("http500"):
-            return self.send(error_500(), status=500)
         mid = q.get("mid", "")
         m = MEMBERS.get(mid)
         if m is None:

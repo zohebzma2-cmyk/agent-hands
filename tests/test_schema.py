@@ -156,6 +156,12 @@ def test_resume_anchor_must_be_an_earlier_step(artifact_dict):
         load(artifact_dict)
 
 
+def test_resume_anchor_cannot_cross_a_commit(artifact_dict):
+    artifact_dict["steps"][8]["resume_anchor"] = "s04"  # s09 is after the irreversible s08
+    with pytest.raises(ValidationError, match="re-run an irreversible step"):
+        load(artifact_dict)
+
+
 def test_outcome_steps_must_exist(artifact_dict):
     artifact_dict["outcomes"][0]["at_steps"] = ["s99"]
     with pytest.raises(ValidationError, match="s99"):

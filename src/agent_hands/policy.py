@@ -24,7 +24,7 @@ from playwright.sync_api import BrowserContext, Page, Route
 
 from agent_hands.artifact.schema import ActionKind, Model
 
-ALWAYS_OK_URLS = ("about:blank", "about:srcdoc")
+ALWAYS_OK_URLS = ("", "about:blank", "about:srcdoc")  # "" = frame with no committed document yet
 
 
 class Allowlist(Model):

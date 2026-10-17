@@ -146,14 +146,18 @@ class Failure(Model):
     observed: str
     screenshot: str | None = None
     snapshot: str | None = None
+    after_commit: bool = False  # an irreversible step was already submitted in this run
 
     _strip = _drop_computed("retryable")
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def retryable(self) -> bool:
-        """Could the *caller* reasonably try the same invocation again later?"""
-        return self.kind in RETRYABLE
+        """Could the *caller* reasonably try the same invocation again later?
+
+        Never once a commit was attempted: retrying would commit a second time.
+        """
+        return self.kind in RETRYABLE and not self.after_commit
 
 
 # --- results ----------------------------------------------------------------
@@ -170,6 +174,8 @@ class _Base(Model):
     recoveries: list[Recovery] = []
     handoffs: list[HandoffRecord] = []
     approvals: list[ApprovalRecord] = []
+    # none: nothing irreversible was submitted; in_doubt: submitted, outcome unknown; committed: confirmed
+    commit_state: Literal["none", "in_doubt", "committed"] = "none"
     evidence_dir: str | None = None
 
     _strip = _drop_computed("drift", "retryable")

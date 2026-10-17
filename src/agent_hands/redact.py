@@ -71,6 +71,11 @@ def _renderings(value: Any) -> set[str]:
     return {r for r in out if len(r) >= MIN_VALUE_LEN}
 
 
+def compile_patterns(specs: Sequence[tuple[str, str]]) -> tuple[Pattern, ...]:
+    """Profile-declared identifier formats, e.g. ("member_number", r"\\b9\\d{5}\\b")."""
+    return tuple((name, re.compile(rx), f"[{name.upper()}]") for name, rx in specs)
+
+
 class Redactor:
     def __init__(self, patterns: Sequence[Pattern] = DEFAULT_PATTERNS) -> None:
         self._patterns = tuple(patterns)
@@ -88,7 +93,7 @@ class Redactor:
         outputs: Mapping[str, Any] | None = None,
         patterns: Sequence[Pattern] = DEFAULT_PATTERNS,
     ) -> Redactor:
-        r = cls(patterns)
+        r = cls(tuple(patterns))
         for spec in artifact.params:
             if params and spec.name in params:
                 r.add(spec.name, params[spec.name], spec.sensitivity)
@@ -118,6 +123,10 @@ class Redactor:
             self._compiled_for = keys
         return self._compiled
 
+    def sensitive_values(self) -> list[str]:
+        """Every declared-sensitive rendering this redactor knows, plus process secrets."""
+        return sorted(set(self._values) | set(_PROCESS_SECRETS), key=len, reverse=True)
+
     def scrub(self, text: str) -> str:
         if not text:
             return text
@@ -146,6 +155,32 @@ class Redactor:
 
     def scrub_exception(self, exc: BaseException) -> str:
         return self.scrub(f"{type(exc).__name__}: {exc}")
+
+
+_VALUEISH = re.compile(r"[\d$@,]")
+
+
+def mask_cells(text: str) -> str:
+    """Structural masking for free text read off a table-layout page (innerText).
+
+    innerText renders table cells tab-separated. A cell is masked when it looks like data (digits,
+    money, emails, "LAST, FIRST") or when it follows a label cell ending in ':'. Labels, headings and
+    button text survive, so a failure summary still says where the page was.
+    """
+    out_lines = []
+    for line in text.splitlines():
+        cells = line.split("\t")
+        masked, prev = [], ""
+        for cell in cells:
+            c = cell.strip()
+            if c and (_VALUEISH.search(c) or prev.endswith(":")):
+                masked.append("▒")
+            else:
+                masked.append(cell)
+            if c:
+                prev = c
+        out_lines.append("\t".join(masked))
+    return "\n".join(out_lines)
 
 
 def mask_value(value: Any, mode: str) -> str | None:

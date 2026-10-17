@@ -29,8 +29,11 @@ from agent_hands.artifact.schema import (
     LiteralValue,
     ParamRef,
     RouteMatches,
+    SecretValue,
     Text,
     TextVisible,
+    Value,
+    ValueEquals,
 )
 from agent_hands.policy import Policy
 
@@ -41,6 +44,19 @@ def text_of(t: Text, params: Mapping[str, Any]) -> str:
     if isinstance(t, ParamRef):
         return str(params[t.param])
     raise TypeError(t)  # pragma: no cover
+
+
+def value_of(v: Value, params: Mapping[str, Any], secrets: Mapping[str, str]) -> str:
+    if isinstance(v, SecretValue):
+        return secrets[v.secret]
+    return text_of(v, params)
+
+
+def control_value(handle: Any) -> str:
+    """What a control currently holds: an input's value, or a select's chosen option label."""
+    return handle.evaluate(
+        "e => e.tagName === 'SELECT' ? ((e.selectedOptions[0] || {}).text || '') : (e.value || '')"
+    )
 
 
 def norm(s: str) -> str:
@@ -67,7 +83,8 @@ def find_frame(page: Page, path: list[FrameRef]) -> Frame | None:
     """Walk a frame path from the top document. Each hop must match exactly one child frame."""
     f = page.main_frame
     for ref in path:
-        kids = [c for c in f.child_frames if _frame_matches(c, ref)]
+        # Playwright keeps detached frames in child_frames after a frame-busting top navigation.
+        kids = [c for c in f.child_frames if not c.is_detached() and _frame_matches(c, ref)]
         if len(kids) != 1:
             return None
         f = kids[0]
@@ -76,7 +93,7 @@ def find_frame(page: Page, path: list[FrameRef]) -> Frame | None:
 
 def frames_in(page: Page, scope: FrameScope) -> list[Frame]:
     if scope == "any":
-        return list(page.frames)
+        return [f for f in page.frames if not f.is_detached()]
     f = find_frame(page, scope)
     return [f] if f is not None else []
 
@@ -105,7 +122,9 @@ def visible_text(frame: Frame) -> str:
 # --- conditions -------------------------------------------------------------
 
 
-def condition_holds(page: Page, cond: Condition, params: Mapping[str, Any]) -> bool:
+def condition_holds(
+    page: Page, cond: Condition, params: Mapping[str, Any], secrets: Mapping[str, str] | None = None
+) -> bool:
     from agent_hands.surface.locate import resolve  # local import: locate depends on this module
 
     if isinstance(cond, TextVisible):
@@ -123,6 +142,14 @@ def condition_holds(page: Page, cond: Condition, params: Mapping[str, Any]) -> b
         return resolve(page, cond.target, params).handle is not None
     if isinstance(cond, ElementAbsent):
         return resolve(page, cond.target, params).handle is None
+    if isinstance(cond, ValueEquals):
+        r = resolve(page, cond.target, params)
+        if r.handle is None:
+            return False
+        try:
+            return norm(control_value(r.handle)) == norm(value_of(cond.value, params, secrets or {}))
+        except Exception:
+            return False
     raise TypeError(cond)  # pragma: no cover
 
 
@@ -136,6 +163,10 @@ def describe_condition(cond: Condition) -> str:
         return f"{where} route matches {cond.pattern}"
     if isinstance(cond, ElementPresent):
         return f"element present: {cond.target.description}"
+    if isinstance(cond, ValueEquals):
+        v = cond.value
+        shown = v.literal if isinstance(v, LiteralValue) else f"{{{v.param}}}" if isinstance(v, ParamRef) else "{secret}"
+        return f"{cond.target.description} holds {shown}"
     return f"element absent: {cond.target.description}"
 
 
@@ -145,10 +176,14 @@ def _path_str(path: list[FrameRef]) -> str:
 
 def page_summary(page: Page, limit: int = 600) -> str:
     """A short what-is-on-screen description for failures: frame routes plus leading text."""
+    from agent_hands.redact import mask_cells
+
     parts = []
     for f in page.frames:
-        text = norm(visible_text(f))
-        parts.append(f"[{f.name or 'top'} {route_of(f.url)}] {text[:limit]}")
+        if f.is_detached():
+            continue
+        text = norm(mask_cells(visible_text(f)))  # structural masking before anything else
+        parts.append(f"[{f.name or 'top'} {route_of(f.url).split('?')[0]}] {text[:limit]}")
     return " | ".join(parts)
 
 
@@ -171,6 +206,8 @@ class BrowserSession:
     context: BrowserContext | None = None
     page: Page | None = None
     _inflight: dict[Any, int] = field(default_factory=dict)
+    _pending: dict[Any, tuple[str, str]] = field(default_factory=dict)  # frame → (method, url)
+    _last: dict[Any, str] = field(default_factory=dict)  # frame → method of its last document request
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
     def start(self) -> Page:
@@ -194,10 +231,27 @@ class BrowserSession:
         with self._lock:
             key = request.frame
             self._inflight[key] = max(0, self._inflight.get(key, 0) + delta)
+            if delta > 0:
+                self._pending[key] = (request.method, request.url)
+                self._last[key] = request.method
+            elif self._inflight[key] == 0:
+                self._pending.pop(key, None)
 
     def loading(self) -> bool:
         with self._lock:
             return any(v > 0 for v in self._inflight.values())
+
+    def pending_document(self) -> tuple[Frame, str, str] | None:
+        """(frame, method, url) of a document load still in flight, if any."""
+        with self._lock:
+            loading = [(f, m, u) for f, (m, u) in self._pending.items() if self._inflight.get(f, 0) > 0]
+        if not loading:
+            return None
+        return sorted(loading, key=lambda x: (x[0].name, x[2]))[0]  # by frame name, not arrival order
+
+    def last_method(self, frame: Frame) -> str | None:
+        with self._lock:
+            return self._last.get(frame)
 
     def close(self) -> None:
         for closer in (self.context, self.browser):
