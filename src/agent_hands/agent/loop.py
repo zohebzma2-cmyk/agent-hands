@@ -606,6 +606,7 @@ class DiscoveryAgent:
 
     def _log_turn(self, n: int, turn: Any) -> None:
         rec = {"turn": n, "model": turn.model, "message_id": turn.message_id, "request_id": turn.request_id,
+               "generation_id": getattr(turn, "generation_id", None),
                "stop_reason": turn.stop_reason, "usage": turn.usage, "text": turn.text[:2000],
                "tool_calls": [{"name": c.name, "input": c.input} for c in turn.tool_calls]}
         self.turns.append(rec)

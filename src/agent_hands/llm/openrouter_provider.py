@@ -16,7 +16,8 @@ to the hard-coded base URL. Environment variables that would make the SDK send i
 headers, make startup fail.
 
 Routing is pinned: ``provider: {only: ["anthropic"], allow_fallbacks: false}``, so every turn is
-served by Anthropic or fails. Each turn's OpenRouter generation id is recorded, and
+served by Anthropic or fails. Each turn's OpenRouter generation id (the ``X-Generation-Id`` response
+header; the body ``id`` is Anthropic's own ``msg_`` id) is recorded, and
 ``generation_stats`` looks each one up afterwards for the upstream that actually served it and what
 it cost. Anthropic-only betas (server-side refusal fallbacks) are not sent on this path.
 """
@@ -103,14 +104,18 @@ class OpenRouterProvider:
         if self.prompt_cache:
             kwargs["cache_control"] = {"type": "ephemeral"}
         try:
-            resp = self._client.messages.create(**kwargs)
+            raw = self._client.messages.with_raw_response.create(**kwargs)
+            resp = raw.parse()
         except anthropic.AuthenticationError:
             raise ProviderUnavailable("OpenRouter rejected the Keychain key (401)") from None
         except anthropic.APIStatusError as e:
             # Keep the status and OpenRouter's own message; never the request (headers carry the key).
             raise ProviderUnavailable(f"OpenRouter returned {e.status_code}: {_message(e)}") from None
         self.messages.append({"role": "assistant", "content": resp.content})
-        return turn_from_message(resp)
+        turn = turn_from_message(resp)
+        # The body id is the upstream (Anthropic) message id; OpenRouter's own id is in a header.
+        turn.generation_id = raw.headers.get("x-generation-id")
+        return turn
 
     def generation_stats(self, ids: list[str], *, attempts: int = 6) -> list[dict[str, Any]]:
         """Per-turn upstream provider, served model and cost, from OpenRouter's own records."""

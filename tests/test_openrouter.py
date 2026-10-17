@@ -55,8 +55,8 @@ class FakeOpenRouter:
         content = [{"type": "tool_use", "id": c.id, "name": c.name, "input": c.input} for c in turn.tool_calls]
         if turn.text:
             content.insert(0, {"type": "text", "text": turn.text})
-        return httpx2.Response(200, json={
-            "id": f"gen-test{self.n:04d}", "type": "message", "role": "assistant", "model": SLUG,
+        return httpx2.Response(200, headers={"X-Generation-Id": f"gen-test{self.n:04d}"}, json={
+            "id": f"msg_test{self.n:04d}", "type": "message", "role": "assistant", "model": SLUG,
             "content": content or [{"type": "text", "text": "done"}],
             "stop_reason": turn.stop_reason if turn.tool_calls else "end_turn", "stop_sequence": None,
             "usage": {"input_tokens": 100, "output_tokens": 20},
@@ -131,7 +131,9 @@ def test_request_goes_to_the_pinned_endpoint_with_pinned_routing():
     assert "fallbacks" not in body
     assert body["output_config"] == {"effort": "high"}
     assert body["tool_choice"] == {"type": "auto"}
-    assert turn.model == SLUG and turn.message_id.startswith("gen-")
+    assert turn.model == SLUG
+    assert turn.message_id.startswith("msg_")  # the upstream (Anthropic) message id, as live
+    assert turn.generation_id.startswith("gen-")  # OpenRouter's id, from the X-Generation-Id header
 
 
 def test_generation_stats_report_upstream_and_cost():
@@ -139,7 +141,7 @@ def test_generation_stats_report_upstream_and_cost():
     p = provider(fake)
     p.start("system", [])
     turn = p.step([{"type": "text", "text": "hi"}])
-    stats = p.generation_stats([turn.message_id])
+    stats = p.generation_stats([turn.generation_id])
     assert stats[0]["provider_name"] == "Anthropic" and stats[0]["total_cost"] == 0.0021
     assert stats[0]["model"] == SLUG
 
@@ -203,6 +205,8 @@ def test_discovery_through_openrouter_records_provenance_and_never_leaks_the_key
     assert meta["provider"] == "openrouter" and meta["model_requested"] == SLUG
     assert meta["routing"] == {"only": ["anthropic"], "allow_fallbacks": False}
     assert meta["upstream_providers"] == ["Anthropic"] and meta["total_cost_usd"] > 0
+    assert all(m.startswith("msg_") for m in meta["message_ids"])
+    assert meta["generation_ids"] == prov.generation_ids
     everything = "".join(p.read_text(errors="ignore") for p in Path(tmp_path).rglob("*") if p.is_file())
     assert FAKE_KEY not in everything and FAKE_KEY not in res.artifact.canonical_json()
     assert FAKE_KEY not in caplog.text

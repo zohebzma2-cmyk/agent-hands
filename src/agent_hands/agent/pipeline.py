@@ -89,7 +89,7 @@ def discover(
     redactor = agent.redactor
     log = RunLog(run_dir, redactor, backend=provider.name)
     models_served = sorted({t["model"] for t in result.turns})
-    gen_ids = [t["message_id"] for t in result.turns if t.get("message_id")]
+    gen_ids = [t["generation_id"] for t in result.turns if t.get("generation_id")]
     stats = provider.generation_stats(gen_ids) if hasattr(provider, "generation_stats") and gen_ids else []
     upstream = sorted({s["provider_name"] for s in stats if s.get("provider_name")})
     billed = [s["total_cost"] for s in stats if isinstance(s.get("total_cost"), (int, float))]
@@ -99,6 +99,7 @@ def discover(
         "commit_guard": {"passed": agent.guard.passed, "blocked": agent.guard.blocked},
         "status": result.status, "reason": result.reason, "turns": len(result.turns),
         "message_ids": [t["message_id"] for t in result.turns], "request_ids": [t["request_id"] for t in result.turns],
+        "generation_ids": gen_ids,
         "usage": [t["usage"] for t in result.turns],
         "routing": getattr(provider, "routing", None),
         "generations": stats,  # the router's own record of each turn: upstream, served model, cost

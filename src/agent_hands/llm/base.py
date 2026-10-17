@@ -23,8 +23,9 @@ class Turn:
     text: str
     stop_reason: str
     model: str  # the model that actually served this turn (fallbacks can change it)
-    message_id: str | None = None
+    message_id: str | None = None  # the model vendor's message id
     request_id: str | None = None
+    generation_id: str | None = None  # a router's own id for this turn (OpenRouter: gen-...)
     usage: dict[str, Any] = field(default_factory=dict)
 
 

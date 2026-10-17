@@ -1,0 +1,29 @@
+{
+  "what": "One tiny live call through the OpenRouter provider (scripts/smoke_openrouter.py): no target app, no screenshots. Proves key (Keychain openrouter-api-key), endpoint, slug, pinned routing and tool use.",
+  "when": "2026-10-17",
+  "provider": "openrouter",
+  "endpoint": "https://openrouter.ai/api/v1/messages (Anthropic-compatible Messages API, via the Anthropic Python SDK)",
+  "requested_slug": "anthropic/claude-opus-5.5",
+  "routing": {"only": ["anthropic"], "allow_fallbacks": false},
+  "request": {"effort": "high", "tool_choice": "auto", "prompt_cache": true, "max_tokens": 2000},
+  "response": {
+    "served_model": "anthropic/claude-opus-5.5",
+    "message_id": "msg_011Cg8PZztA3qyBxhPPT3XgA",
+    "generation_id": "gen-1792266600-V6CS49gIPQb5wcoAnLPu",
+    "stop_reason": "tool_use",
+    "tool_calls": [{"name": "echo", "input": {"word": "ok"}}],
+    "usage": {"input_tokens": 407, "output_tokens": 47},
+    "latency_s": 1.39
+  },
+  "openrouter_generation_record": {
+    "model": "anthropic/claude-opus-5.5-20260921",
+    "provider_name": "Anthropic",
+    "total_cost": 0.002568,
+    "finish_reason": "tool_calls",
+    "latency_ms": 994
+  },
+  "notes": [
+    "A first identical call earlier proved the same path, but its generation lookup failed: the Messages endpoint's body id is Anthropic's msg_ id, and OpenRouter's gen- id is in the X-Generation-Id response header. The provider reads that header now; this second call is the one recorded here.",
+    "effort and cache_control were accepted without error; whether the router forwarded effort cannot be observed from a trivial prompt (native_tokens_reasoning 0)."
+  ]
+}
