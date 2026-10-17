@@ -1,0 +1,253 @@
+{
+  "steps": [
+    {
+      "id": "s01",
+      "intent": "Enter teller user ID",
+      "risk": "reversible",
+      "risk_note": "changes form state only",
+      "strategies": [
+        "near_text",
+        "css"
+      ],
+      "rejected": [
+        [
+          "xpath",
+          "no match"
+        ]
+      ],
+      "checkpoint": "control holds the value"
+    },
+    {
+      "id": "s02",
+      "intent": "Enter teller password",
+      "risk": "reversible",
+      "risk_note": "changes form state only",
+      "strategies": [
+        "near_text",
+        "css"
+      ],
+      "rejected": [
+        [
+          "xpath",
+          "no match"
+        ]
+      ],
+      "checkpoint": "control holds the value"
+    },
+    {
+      "id": "s03",
+      "intent": "Sign on",
+      "risk": "safe",
+      "risk_note": "sign-on posts credentials but changes nothing",
+      "strategies": [
+        "role",
+        "css"
+      ],
+      "rejected": [
+        [
+          "xpath",
+          "no match"
+        ]
+      ],
+      "checkpoint": "top navigated to /core/frameset.do"
+    },
+    {
+      "id": "s04",
+      "intent": "Enter member number",
+      "risk": "reversible",
+      "risk_note": "changes form state only",
+      "strategies": [
+        "near_text",
+        "css"
+      ],
+      "rejected": [
+        [
+          "near_text",
+          "matches a different element"
+        ],
+        [
+          "xpath",
+          "no match"
+        ]
+      ],
+      "checkpoint": "control holds the value"
+    },
+    {
+      "id": "s05",
+      "intent": "Search for the member by number",
+      "risk": "safe",
+      "risk_note": "no form submission",
+      "strategies": [
+        "role",
+        "near_text",
+        "near_text",
+        "css"
+      ],
+      "rejected": [
+        [
+          "xpath",
+          "no match"
+        ]
+      ],
+      "checkpoint": "new text 'Member # Name Branch' in main"
+    },
+    {
+      "id": "s06",
+      "intent": "Open the member record",
+      "risk": "safe",
+      "risk_note": "no form submission",
+      "strategies": [
+        "text",
+        "css"
+      ],
+      "rejected": [
+        [
+          "role",
+          "2 matches"
+        ],
+        [
+          "xpath",
+          "no match"
+        ]
+      ],
+      "checkpoint": "main navigated to /core/member.do; new text 'Member Detail' in main; main shows {member_id}"
+    },
+    {
+      "id": "s07",
+      "intent": "Read the Base Share balance",
+      "risk": "safe",
+      "risk_note": "read only",
+      "strategies": [
+        "near_text",
+        "css"
+      ],
+      "rejected": [
+        [
+          "xpath",
+          "no match"
+        ]
+      ],
+      "checkpoint": "value element present"
+    },
+    {
+      "id": "s08",
+      "intent": "Start opening a new sub-account",
+      "risk": "safe",
+      "risk_note": "no form submission",
+      "strategies": [
+        "role",
+        "css"
+      ],
+      "rejected": [
+        [
+          "xpath",
+          "no match"
+        ]
+      ],
+      "checkpoint": "main navigated to /core/subacct.do; new text 'Open Sub-Account' in main; main shows {member_id}"
+    },
+    {
+      "id": "s09",
+      "intent": "Choose the account type",
+      "risk": "reversible",
+      "risk_note": "changes form state only",
+      "strategies": [
+        "near_text",
+        "css"
+      ],
+      "rejected": [
+        [
+          "xpath",
+          "no match"
+        ]
+      ],
+      "checkpoint": "control holds the value"
+    },
+    {
+      "id": "[PII:observed]",
+      "intent": "Enter the nickname",
+      "risk": "reversible",
+      "risk_note": "changes form state only",
+      "strategies": [
+        "near_text",
+        "css"
+      ],
+      "rejected": [
+        [
+          "xpath",
+          "no match"
+        ]
+      ],
+      "checkpoint": "control holds the value"
+    },
+    {
+      "id": "s11",
+      "intent": "Enter the opening deposit",
+      "risk": "reversible",
+      "risk_note": "changes form state only",
+      "strategies": [
+        "near_text",
+        "css"
+      ],
+      "rejected": [
+        [
+          "xpath",
+          "no match"
+        ]
+      ],
+      "checkpoint": "control holds the value"
+    },
+    {
+      "id": "s12",
+      "intent": "Set funding source to Cash",
+      "risk": "reversible",
+      "risk_note": "changes form state only",
+      "strategies": [
+        "near_text",
+        "css"
+      ],
+      "rejected": [
+        [
+          "xpath",
+          "no match"
+        ]
+      ],
+      "checkpoint": "control holds the value"
+    },
+    {
+      "id": "s13",
+      "intent": "Submit to open the {account_type} sub-account",
+      "risk": "irreversible",
+      "risk_note": "opens a sub-account in the system of record",
+      "strategies": [
+        "role",
+        "css"
+      ],
+      "rejected": [
+        [
+          "xpath",
+          "no match"
+        ]
+      ],
+      "checkpoint": "main navigated to /core/confirm.do; new text 'Sub-Account Opened' in main; main shows {member_id}"
+    },
+    {
+      "id": "s14",
+      "intent": "Read the confirmation number",
+      "risk": "safe",
+      "risk_note": "read only",
+      "strategies": [
+        "css"
+      ],
+      "rejected": [
+        [
+          "xpath",
+          "no match"
+        ]
+      ],
+      "checkpoint": "value element present"
+    }
+  ],
+  "dropped": [],
+  "warnings": []
+}

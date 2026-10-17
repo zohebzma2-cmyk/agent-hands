@@ -1,0 +1,110 @@
+{
+  "fetched_at": "2026-10-17T20:35:12+00:00",
+  "source": "GET https://openrouter.ai/api/v1/generation?id=<id> for each id in compiled_draft.json provenance",
+  "why_this_file": "meta.json and run.jsonl were written while the account-number redaction pattern matched the unix-time digits inside generation ids (gen-[ACCT \u2026nnnn]-...). Fixed in e837dfd; this run's files are left as written, and the intact ids come from the artifact provenance, which is written verbatim after a lint.",
+  "turns": [
+    {
+      "id": "gen-1792267210-621MUyYWx0wKPp0wF7B2",
+      "model": "anthropic/claude-opus-5.5-20260921",
+      "provider_name": "Anthropic",
+      "total_cost": 0.025221,
+      "tokens_prompt": 3128,
+      "tokens_completion": 51,
+      "native_tokens_reasoning": 0,
+      "native_tokens_cached": 0,
+      "finish_reason": "tool_calls",
+      "latency": 2693
+    },
+    {
+      "id": "gen-1792267216-E4TPG2JRQKivAw1ALTlB",
+      "model": "anthropic/claude-opus-5.5-20260921",
+      "provider_name": "Anthropic",
+      "total_cost": 0.0101498,
+      "tokens_prompt": 3629,
+      "tokens_completion": 36,
+      "native_tokens_reasoning": 0,
+      "native_tokens_cached": 3969,
+      "finish_reason": "tool_calls",
+      "latency": 1618
+    },
+    {
+      "id": "gen-1792267220-SG1KinWhMC1ezuJlGBQA",
+      "model": "anthropic/claude-opus-5.5-20260921",
+      "provider_name": "Anthropic",
+      "total_cost": 0.00885,
+      "tokens_prompt": 4228,
+      "tokens_completion": 15,
+      "native_tokens_reasoning": 0,
+      "native_tokens_cached": 5145,
+      "finish_reason": "tool_calls",
+      "latency": 1598
+    },
+    {
+      "id": "gen-1792267223-aIqMzVmOBLJqwAhUgYeq",
+      "model": "anthropic/claude-opus-5.5-20260921",
+      "provider_name": "Anthropic",
+      "total_cost": 0.0117622,
+      "tokens_prompt": 4942,
+      "tokens_completion": 39,
+      "native_tokens_reasoning": 0,
+      "native_tokens_cached": 6406,
+      "finish_reason": "tool_calls",
+      "latency": 1697
+    },
+    {
+      "id": "gen-1792267227-c0XBmFzQhtuG0XGhJH9S",
+      "model": "anthropic/claude-opus-5.5-20260921",
+      "provider_name": "Anthropic",
+      "total_cost": 0.0166768,
+      "tokens_prompt": 5660,
+      "tokens_completion": 82,
+      "native_tokens_reasoning": 0,
+      "native_tokens_cached": 7779,
+      "finish_reason": "tool_calls",
+      "latency": 4089
+    },
+    {
+      "id": "gen-1792267236-bIJ6GXL7BW8AeqyAGMAC",
+      "model": "anthropic/claude-opus-5.5-20260921",
+      "provider_name": "Anthropic",
+      "total_cost": 0.012136,
+      "tokens_prompt": 6437,
+      "tokens_completion": 19,
+      "native_tokens_reasoning": 0,
+      "native_tokens_cached": 9200,
+      "finish_reason": "tool_calls",
+      "latency": 1480
+    },
+    {
+      "id": "gen-1792267778-5OpNi4agXSscIqoFshNL",
+      "model": "anthropic/claude-opus-5.5-20260921",
+      "provider_name": "Anthropic",
+      "total_cost": 0.061746,
+      "tokens_prompt": 6947,
+      "tokens_completion": 24,
+      "native_tokens_reasoning": 0,
+      "native_tokens_cached": 0,
+      "finish_reason": "tool_calls",
+      "latency": 1955
+    },
+    {
+      "id": "gen-1792267781-dA4x9pvwq9ve1i5Kq88B",
+      "model": "anthropic/claude-opus-5.5-20260921",
+      "provider_name": "Anthropic",
+      "total_cost": 0.010307,
+      "tokens_prompt": 7470,
+      "tokens_completion": 65,
+      "native_tokens_reasoning": 0,
+      "native_tokens_cached": 11930,
+      "finish_reason": "tool_calls",
+      "latency": 1605
+    }
+  ],
+  "total_cost_usd": 0.156849,
+  "upstream_providers": [
+    "Anthropic"
+  ],
+  "models": [
+    "anthropic/claude-opus-5.5-20260921"
+  ]
+}

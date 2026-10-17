@@ -1,0 +1,14 @@
+{
+  "id": "INT-disc-20261017T200007-validate-1",
+  "run_id": "disc-20261017T200007-validate",
+  "capability": "cu_core.open_sub_account@1.0.0",
+  "step_id": "s13",
+  "step_intent": "Submit to open the {account_type} sub-account",
+  "reason": "target_not_found",
+  "detail": "button \"Open Account\": one element via role, css (min_agreement 2)",
+  "ask": "Get the page to where this step can run: Submit to open the {account_type} sub-account. Don't do the step itself.",
+  "resume_check": "main route matches /core/confirm.do*; text contains 'Sub-Account Opened' visible in main; text contains '{member_id}' visible in main (within 8000 ms) (or the target of s13 is reachable)",
+  "screenshot": "screens/026-INT-disc-20261017T200007-validate-1-before.png",
+  "page_summary": "[top /core/frameset.do]  | [banner /core/banner.do] Ridgeline Example Credit Union (SYNTHETIC) \u2592 \u2592 | [nav /core/nav.do] Functions Member Search Teller Drawer Reports Sign Off | [main /] This page has been blocked by Chromium",
+  "requested_at": "2026-10-17T20:19:14.620+00:00"
+}
