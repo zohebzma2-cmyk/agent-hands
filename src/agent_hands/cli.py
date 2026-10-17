@@ -133,6 +133,10 @@ def cmd_discover(args: argparse.Namespace) -> int:
     from agent_hands.llm.base import ProviderUnavailable
 
     spec = CapabilitySpec.model_validate(json.loads(Path(args.spec).read_text()))
+    if not sys.stdin.isatty():  # before reading any key or spending anything
+        print("stopping: discover needs an interactive terminal (a human approves the irreversible step)",
+              file=sys.stderr)
+        return 1
     try:
         if args.provider == "openrouter":
             from agent_hands.llm.openrouter_provider import DEFAULT_SLUG, OpenRouterProvider
@@ -200,6 +204,9 @@ def cmd_replay(args: argparse.Namespace) -> int:
     from agent_hands.handoff.operator import TerminalOperator
 
     artifact = CapabilityArtifact.model_validate_json(Path(args.artifact).read_text())
+    if args.operator == "terminal" and not sys.stdin.isatty():
+        print("stopping: --operator terminal needs an interactive terminal", file=sys.stderr)
+        return 1
     target = Target(args)
     run_id = args.run_id or f"rp-{_stamp()}"
     run_dir = Path(args.out) / run_id if args.out else None

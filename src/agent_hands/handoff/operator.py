@@ -186,7 +186,11 @@ class TerminalOperator:
         while True:
             self.out.write(" > ")
             self.out.flush()
-            line = self.inp.readline().strip().lower()
+            raw = self.inp.readline()
+            if raw == "":  # end of input: nobody can answer, so the answer is no
+                self._say(" No terminal input; treating as 'reject'.")
+                return ApprovalDecision(decision="rejected", approver="no-terminal", at=now())
+            line = raw.strip().lower()
             if line in ("approve", "reject"):
                 return ApprovalDecision(
                     decision="approved" if line == "approve" else "rejected", approver=getpass.getuser(), at=now()
@@ -199,7 +203,8 @@ class TerminalOperator:
         while time.monotonic() < deadline:
             ready, _, _ = select.select([self.inp], [], [], 0)
             if ready:
-                return self.inp.readline().strip().lower()
+                raw = self.inp.readline()
+                return "abort" if raw == "" else raw.strip().lower()  # end of input means abort
             ctx.pump(200)  # keep the browser's event loop turning while we wait
         return None
 

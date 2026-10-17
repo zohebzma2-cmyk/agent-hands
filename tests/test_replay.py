@@ -435,3 +435,23 @@ def test_replay_never_imports_a_model_provider():
     )
     proc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
     assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+def test_terminal_operator_treats_end_of_input_as_reject_not_a_hang():
+    import io
+
+    from agent_hands.handoff.operator import ApprovalRequest, TerminalOperator
+
+    op = TerminalOperator(stream_in=io.StringIO(""), stream_out=io.StringIO())
+    d = op.approve(ApprovalRequest(run_id="r", step_id="s13", intent="x", target="t", bound_to="h", summary="s"))
+    assert d.decision == "rejected" and d.approver == "no-terminal"
+
+
+def test_discover_refuses_without_an_interactive_terminal(monkeypatch, capsys):
+    import io
+
+    from agent_hands.cli import main
+
+    monkeypatch.setattr("sys.stdin", io.StringIO(""))
+    assert main(["discover", "--spec", "specs/open_sub_account.json", "-p", "member_id=900001"]) == 1
+    assert "interactive terminal" in capsys.readouterr().err
