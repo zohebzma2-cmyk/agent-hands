@@ -1,0 +1,319 @@
+FFFFFFFFFFFF                                                             [100%]
+=================================== FAILURES ===================================
+___________________ test_missing_keychain_item_stops_cleanly ___________________
+
+    def test_missing_keychain_item_stops_cleanly():
+        from agent_hands.llm.openrouter_provider import OpenRouterProvider
+    
+        def missing(service):
+            raise SecretUnavailable(f"Keychain item '{service}' not found or unreadable")
+    
+        with pytest.raises(ProviderUnavailable) as ei:
+>           OpenRouterProvider(key_reader=missing)
+
+tests/test_openrouter.py:85: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <agent_hands.llm.openrouter_provider.OpenRouterProvider object at 0x10be0c3b0>
+a = ()
+k = {'key_reader': <function test_missing_keychain_item_stops_cleanly.<locals>.missing at 0x10be00fe0>}
+
+    def __init__(self, *a, **k):
+>       raise NotImplementedError
+E       NotImplementedError
+
+src/agent_hands/llm/openrouter_provider.py:6: NotImplementedError
+_______________ test_reads_only_the_openrouter_keychain_service ________________
+
+    def test_reads_only_the_openrouter_keychain_service():
+        from agent_hands.llm.openrouter_provider import OpenRouterProvider
+    
+        asked = []
+>       OpenRouterProvider(key_reader=lambda s: asked.append(s) or FAKE_KEY, http_client=FakeOpenRouter().client())
+
+tests/test_openrouter.py:94: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <agent_hands.llm.openrouter_provider.OpenRouterProvider object at 0x10bd8e510>
+a = ()
+k = {'key_reader': <function test_reads_only_the_openrouter_keychain_service.<locals>.<lambda> at 0x10be03e20>, 'http_client': <httpx2.Client object at 0x10bd8e270>}
+
+    def __init__(self, *a, **k):
+>       raise NotImplementedError
+E       NotImplementedError
+
+src/agent_hands/llm/openrouter_provider.py:6: NotImplementedError
+_ test_env_override_that_could_redirect_the_key_is_refused[ANTHROPIC_BASE_URL] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10bd8e480>
+var = 'ANTHROPIC_BASE_URL'
+
+    @pytest.mark.parametrize("var", ["ANTHROPIC_BASE_URL", "ANTHROPIC_CUSTOM_HEADERS"])
+    def test_env_override_that_could_redirect_the_key_is_refused(monkeypatch, var):
+        monkeypatch.setenv(var, "https://attacker.invalid")
+        with pytest.raises(ProviderUnavailable, match=var):
+>           provider(FakeOpenRouter())
+
+tests/test_openrouter.py:102: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_openrouter.py:72: in provider
+    return OpenRouterProvider(http_client=fake.client(), key_reader=lambda service: FAKE_KEY, max_retries=0, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <agent_hands.llm.openrouter_provider.OpenRouterProvider object at 0x10be0d670>
+a = ()
+k = {'http_client': <httpx2.Client object at 0x10bd8ebd0>, 'key_reader': <function provider.<locals>.<lambda> at 0x10be24180>, 'max_retries': 0}
+
+    def __init__(self, *a, **k):
+>       raise NotImplementedError
+E       NotImplementedError
+
+src/agent_hands/llm/openrouter_provider.py:6: NotImplementedError
+_ test_env_override_that_could_redirect_the_key_is_refused[ANTHROPIC_CUSTOM_HEADERS] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10be0e120>
+var = 'ANTHROPIC_CUSTOM_HEADERS'
+
+    @pytest.mark.parametrize("var", ["ANTHROPIC_BASE_URL", "ANTHROPIC_CUSTOM_HEADERS"])
+    def test_env_override_that_could_redirect_the_key_is_refused(monkeypatch, var):
+        monkeypatch.setenv(var, "https://attacker.invalid")
+        with pytest.raises(ProviderUnavailable, match=var):
+>           provider(FakeOpenRouter())
+
+tests/test_openrouter.py:102: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_openrouter.py:72: in provider
+    return OpenRouterProvider(http_client=fake.client(), key_reader=lambda service: FAKE_KEY, max_retries=0, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <agent_hands.llm.openrouter_provider.OpenRouterProvider object at 0x10be0f170>
+a = ()
+k = {'http_client': <httpx2.Client object at 0x10be0dbb0>, 'key_reader': <function provider.<locals>.<lambda> at 0x10be242c0>, 'max_retries': 0}
+
+    def __init__(self, *a, **k):
+>       raise NotImplementedError
+E       NotImplementedError
+
+src/agent_hands/llm/openrouter_provider.py:6: NotImplementedError
+________________ test_an_anthropic_key_in_the_env_is_never_sent ________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10be0eea0>
+
+    def test_an_anthropic_key_in_the_env_is_never_sent(monkeypatch):
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-api03-should-never-be-sent-anywhere")
+        fake = FakeOpenRouter()
+>       p = provider(fake)
+            ^^^^^^^^^^^^^^
+
+tests/test_openrouter.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_openrouter.py:72: in provider
+    return OpenRouterProvider(http_client=fake.client(), key_reader=lambda service: FAKE_KEY, max_retries=0, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <agent_hands.llm.openrouter_provider.OpenRouterProvider object at 0x10be0f770>
+a = ()
+k = {'http_client': <httpx2.Client object at 0x10be0ea80>, 'key_reader': <function provider.<locals>.<lambda> at 0x10be24680>, 'max_retries': 0}
+
+    def __init__(self, *a, **k):
+>       raise NotImplementedError
+E       NotImplementedError
+
+src/agent_hands/llm/openrouter_provider.py:6: NotImplementedError
+_________ test_request_goes_to_the_pinned_endpoint_with_pinned_routing _________
+
+    def test_request_goes_to_the_pinned_endpoint_with_pinned_routing():
+        fake = FakeOpenRouter()
+>       p = provider(fake)
+            ^^^^^^^^^^^^^^
+
+tests/test_openrouter.py:121: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_openrouter.py:72: in provider
+    return OpenRouterProvider(http_client=fake.client(), key_reader=lambda service: FAKE_KEY, max_retries=0, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <agent_hands.llm.openrouter_provider.OpenRouterProvider object at 0x10be0cce0>
+a = ()
+k = {'http_client': <httpx2.Client object at 0x10be0f5c0>, 'key_reader': <function provider.<locals>.<lambda> at 0x10be24860>, 'max_retries': 0}
+
+    def __init__(self, *a, **k):
+>       raise NotImplementedError
+E       NotImplementedError
+
+src/agent_hands/llm/openrouter_provider.py:6: NotImplementedError
+________________ test_generation_stats_report_upstream_and_cost ________________
+
+    def test_generation_stats_report_upstream_and_cost():
+        fake = FakeOpenRouter()
+>       p = provider(fake)
+            ^^^^^^^^^^^^^^
+
+tests/test_openrouter.py:139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_openrouter.py:72: in provider
+    return OpenRouterProvider(http_client=fake.client(), key_reader=lambda service: FAKE_KEY, max_retries=0, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <agent_hands.llm.openrouter_provider.OpenRouterProvider object at 0x10be0e510>
+a = ()
+k = {'http_client': <httpx2.Client object at 0x10be0d790>, 'key_reader': <function provider.<locals>.<lambda> at 0x10be256c0>, 'max_retries': 0}
+
+    def __init__(self, *a, **k):
+>       raise NotImplementedError
+E       NotImplementedError
+
+src/agent_hands/llm/openrouter_provider.py:6: NotImplementedError
+__________________ test_key_never_in_exception_messages[401] ___________________
+
+status = 401
+
+    @pytest.mark.parametrize("status", [401, 500])
+    def test_key_never_in_exception_messages(status):
+>       p = provider(FakeOpenRouter(status=status))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_openrouter.py:152: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_openrouter.py:72: in provider
+    return OpenRouterProvider(http_client=fake.client(), key_reader=lambda service: FAKE_KEY, max_retries=0, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <agent_hands.llm.openrouter_provider.OpenRouterProvider object at 0x10bea80b0>
+a = ()
+k = {'http_client': <httpx2.Client object at 0x10be0f9e0>, 'key_reader': <function provider.<locals>.<lambda> at 0x10be25a80>, 'max_retries': 0}
+
+    def __init__(self, *a, **k):
+>       raise NotImplementedError
+E       NotImplementedError
+
+src/agent_hands/llm/openrouter_provider.py:6: NotImplementedError
+__________________ test_key_never_in_exception_messages[500] ___________________
+
+status = 500
+
+    @pytest.mark.parametrize("status", [401, 500])
+    def test_key_never_in_exception_messages(status):
+>       p = provider(FakeOpenRouter(status=status))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_openrouter.py:152: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_openrouter.py:72: in provider
+    return OpenRouterProvider(http_client=fake.client(), key_reader=lambda service: FAKE_KEY, max_retries=0, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <agent_hands.llm.openrouter_provider.OpenRouterProvider object at 0x10beaae70>
+a = ()
+k = {'http_client': <httpx2.Client object at 0x10beaa690>, 'key_reader': <function provider.<locals>.<lambda> at 0x10be25d00>, 'max_retries': 0}
+
+    def __init__(self, *a, **k):
+>       raise NotImplementedError
+E       NotImplementedError
+
+src/agent_hands/llm/openrouter_provider.py:6: NotImplementedError
+___________________ test_key_never_in_sdk_or_http_debug_logs ___________________
+
+caplog = <_pytest.logging.LogCaptureFixture object at 0x10beab740>
+
+    def test_key_never_in_sdk_or_http_debug_logs(caplog):
+        with caplog.at_level(logging.DEBUG):
+>           p = provider(FakeOpenRouter())
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_openrouter.py:163: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_openrouter.py:72: in provider
+    return OpenRouterProvider(http_client=fake.client(), key_reader=lambda service: FAKE_KEY, max_retries=0, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <agent_hands.llm.openrouter_provider.OpenRouterProvider object at 0x10bea8dd0>
+a = ()
+k = {'http_client': <httpx2.Client object at 0x10beab410>, 'key_reader': <function provider.<locals>.<lambda> at 0x10be262a0>, 'max_retries': 0}
+
+    def __init__(self, *a, **k):
+>       raise NotImplementedError
+E       NotImplementedError
+
+src/agent_hands/llm/openrouter_provider.py:6: NotImplementedError
+_____________ test_key_is_a_process_secret_and_matches_the_pattern _____________
+
+    def test_key_is_a_process_secret_and_matches_the_pattern():
+>       provider(FakeOpenRouter())
+
+tests/test_openrouter.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_openrouter.py:72: in provider
+    return OpenRouterProvider(http_client=fake.client(), key_reader=lambda service: FAKE_KEY, max_retries=0, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <agent_hands.llm.openrouter_provider.OpenRouterProvider object at 0x10bea9a90>
+a = ()
+k = {'http_client': <httpx2.Client object at 0x10beaba10>, 'key_reader': <function provider.<locals>.<lambda> at 0x10be267a0>, 'max_retries': 0}
+
+    def __init__(self, *a, **k):
+>       raise NotImplementedError
+E       NotImplementedError
+
+src/agent_hands/llm/openrouter_provider.py:6: NotImplementedError
+_ test_discovery_through_openrouter_records_provenance_and_never_leaks_the_key _
+
+tmp_path = PosixPath('<tmp>')
+caplog = <_pytest.logging.LogCaptureFixture object at 0x10be69430>
+
+    @pytest.mark.browser
+    def test_discovery_through_openrouter_records_provenance_and_never_leaks_the_key(tmp_path, caplog):
+        import cu_sim
+        from browser_helpers import allowlist_for
+        from test_discovery import PARAMS, SPEC, happy_script
+    
+        from agent_hands.agent.pipeline import discover
+        from agent_hands.handoff.operator import ScriptedOperator
+    
+        sim = cu_sim.start()
+        fake = FakeOpenRouter(happy_script())
+        try:
+            with caplog.at_level(logging.DEBUG):
+>               res = discover(SPEC, PARAMS, provider(fake), origin=sim.url, allowlist=allowlist_for(sim.url),
+                                             ^^^^^^^^^^^^^^
+                               run_id="or-test", run_dir=tmp_path, operator=ScriptedOperator())
+
+tests/test_openrouter.py:192: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_openrouter.py:72: in provider
+    return OpenRouterProvider(http_client=fake.client(), key_reader=lambda service: FAKE_KEY, max_retries=0, **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <agent_hands.llm.openrouter_provider.OpenRouterProvider object at 0x10c62fce0>
+a = ()
+k = {'http_client': <httpx2.Client object at 0x10c62fa10>, 'key_reader': <function provider.<locals>.<lambda> at 0x10c643f60>, 'max_retries': 0}
+
+    def __init__(self, *a, **k):
+>       raise NotImplementedError
+E       NotImplementedError
+
+src/agent_hands/llm/openrouter_provider.py:6: NotImplementedError
+=========================== short test summary info ============================
+FAILED tests/test_openrouter.py::test_missing_keychain_item_stops_cleanly - N...
+FAILED tests/test_openrouter.py::test_reads_only_the_openrouter_keychain_service
+FAILED tests/test_openrouter.py::test_env_override_that_could_redirect_the_key_is_refused[ANTHROPIC_BASE_URL]
+FAILED tests/test_openrouter.py::test_env_override_that_could_redirect_the_key_is_refused[ANTHROPIC_CUSTOM_HEADERS]
+FAILED tests/test_openrouter.py::test_an_anthropic_key_in_the_env_is_never_sent
+FAILED tests/test_openrouter.py::test_request_goes_to_the_pinned_endpoint_with_pinned_routing
+FAILED tests/test_openrouter.py::test_generation_stats_report_upstream_and_cost
+FAILED tests/test_openrouter.py::test_key_never_in_exception_messages[401] - ...
+FAILED tests/test_openrouter.py::test_key_never_in_exception_messages[500] - ...
+FAILED tests/test_openrouter.py::test_key_never_in_sdk_or_http_debug_logs - N...
+FAILED tests/test_openrouter.py::test_key_is_a_process_secret_and_matches_the_pattern
+FAILED tests/test_openrouter.py::test_discovery_through_openrouter_records_provenance_and_never_leaks_the_key
+12 failed in 0.25s

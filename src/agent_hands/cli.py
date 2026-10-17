@@ -130,12 +130,18 @@ def cmd_discover(args: argparse.Namespace) -> int:
     from agent_hands.agent.pipeline import discover
     from agent_hands.artifact.spec import CapabilitySpec
     from agent_hands.handoff.operator import TerminalOperator
-    from agent_hands.llm.anthropic_provider import AnthropicProvider
     from agent_hands.llm.base import ProviderUnavailable
 
     spec = CapabilitySpec.model_validate(json.loads(Path(args.spec).read_text()))
     try:
-        provider = AnthropicProvider(model=args.model, effort=args.effort)
+        if args.provider == "openrouter":
+            from agent_hands.llm.openrouter_provider import DEFAULT_SLUG, OpenRouterProvider
+
+            provider: Any = OpenRouterProvider(model=args.model or DEFAULT_SLUG, effort=args.effort)
+        else:
+            from agent_hands.llm.anthropic_provider import AnthropicProvider
+
+            provider = AnthropicProvider(model=args.model or "claude-opus-5-5", effort=args.effort)
     except ProviderUnavailable as e:
         print(f"stopping: {e}", file=sys.stderr)
         return 1
@@ -145,7 +151,8 @@ def cmd_discover(args: argparse.Namespace) -> int:
     run_dir = Path(args.out) / run_id
     try:
         target.faults(_fault_spec(args.fault))
-        print(f"discovery {run_id}: {provider.model} on {target.url} → {run_dir}")
+        via = f" via {provider.name}, routing {provider.routing}" if provider.name == "openrouter" else ""
+        print(f"discovery {run_id}: {provider.model}{via} on {target.url} → {run_dir}")
         res = discover(spec, _params(args.param), provider, origin=target.url, allowlist=target.allowlist(tenant),
                        run_id=run_id, run_dir=run_dir, operator=TerminalOperator(), headed=args.headed,
                        max_steps=args.max_steps)
@@ -278,7 +285,9 @@ def main(argv: list[str] | None = None) -> int:
     d = sub.add_parser("discover", help="real LLM discovery run")
     d.add_argument("--spec", required=True)
     d.add_argument("-p", "--param", action="append", default=[])
-    d.add_argument("--model", default="claude-opus-5-5")
+    d.add_argument("--provider", choices=["openrouter", "anthropic"], default="openrouter",
+                   help="openrouter (Keychain openrouter-api-key) or anthropic (Keychain anthropic-api-key)")
+    d.add_argument("--model", help="default: anthropic/claude-opus-5.5 (openrouter) or claude-opus-5-5 (anthropic)")
     d.add_argument("--effort", default="high")
     d.add_argument("--max-steps", type=int, default=40)
     d.add_argument("--run-id")

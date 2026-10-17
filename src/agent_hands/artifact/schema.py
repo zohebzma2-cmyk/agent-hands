@@ -451,6 +451,8 @@ class Provenance(Model):
     provider: str | None = None
     model: str | None = None
     models_served: list[str] = []  # every model that actually served a discovery turn (fallbacks)
+    upstream_providers: list[str] = []  # via a router (OpenRouter): who actually ran the model
+    generation_ids: list[str] = []  # the router's per-turn ids, to audit the run with the router
     validated_runs: list[str] = []
     approved_by: str | None = None
     approved_at: str | None = None

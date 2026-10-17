@@ -156,6 +156,8 @@ def compile_trace(
     model: str,
     models_served: list[str] | None = None,
     scrub: Any = None,
+    upstream_providers: list[str] | None = None,
+    generation_ids: list[str] | None = None,
 ) -> tuple[CapabilityArtifact, CompileReport]:
     scrub = scrub or (lambda x: x)
     report = CompileReport()
@@ -285,6 +287,8 @@ def compile_trace(
         "provenance": {"compiler_version": COMPILER_VERSION,
                        "created_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
                        "discovered_by_run": run_id, "provider": provider, "model": model,
-                       "models_served": sorted(models_served or [])},
+                       "models_served": sorted(models_served or []),
+                       "upstream_providers": sorted(upstream_providers or []),
+                       "generation_ids": list(generation_ids or [])},
     }
     return CapabilityArtifact.model_validate(data), report

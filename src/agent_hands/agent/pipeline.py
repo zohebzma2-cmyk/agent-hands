@@ -89,6 +89,10 @@ def discover(
     redactor = agent.redactor
     log = RunLog(run_dir, redactor, backend=provider.name)
     models_served = sorted({t["model"] for t in result.turns})
+    gen_ids = [t["message_id"] for t in result.turns if t.get("message_id")]
+    stats = provider.generation_stats(gen_ids) if hasattr(provider, "generation_stats") and gen_ids else []
+    upstream = sorted({s["provider_name"] for s in stats if s.get("provider_name")})
+    billed = [s["total_cost"] for s in stats if isinstance(s.get("total_cost"), (int, float))]
     meta = {
         "run_id": run_id, "capability": spec.id, "provider": provider.name, "model_requested": provider.model,
         "models_served": models_served, "git_sha": git_sha(),
@@ -96,6 +100,10 @@ def discover(
         "status": result.status, "reason": result.reason, "turns": len(result.turns),
         "message_ids": [t["message_id"] for t in result.turns], "request_ids": [t["request_id"] for t in result.turns],
         "usage": [t["usage"] for t in result.turns],
+        "routing": getattr(provider, "routing", None),
+        "generations": stats,  # the router's own record of each turn: upstream, served model, cost
+        "upstream_providers": upstream,
+        "total_cost_usd": round(sum(billed), 6) if billed else None,
         "estimated_cost_usd": estimate_cost(provider.model, result.turns),
         "approvals": agent.approvals, "policy_blocked": blocked, "trace_steps": len(result.trace),
         "lease": [e.__dict__ for e in agent.lease.log],
@@ -107,7 +115,9 @@ def discover(
     try:
         artifact, report = compile_trace(spec, result.trace, profile, params=agent.params, outputs=result.outputs,
                                          run_id=run_id, provider=provider.name, model=provider.model,
-                                         models_served=models_served, scrub=redactor.scrub)
+                                         models_served=models_served, scrub=redactor.scrub,
+                                         upstream_providers=upstream,
+                                         generation_ids=gen_ids if provider.name == "openrouter" else [])
     except (CompileError, ValidationError) as e:
         log.write_json("compile_error.json", {"error": redactor.scrub(str(e))[:2000]})
         return PipelineResult(result, None, None, None, f"compile failed: {redactor.scrub(str(e))[:300]}")

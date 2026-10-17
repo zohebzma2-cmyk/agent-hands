@@ -35,6 +35,7 @@ Pattern = tuple[str, re.Pattern[str], Replacement]
 
 DEFAULT_PATTERNS: tuple[Pattern, ...] = (
     ("api_key", re.compile(r"sk-ant-[A-Za-z0-9_\-]{8,}"), "[SECRET]"),
+    ("openrouter_key", re.compile(r"sk-or-[A-Za-z0-9_\-]{8,}"), "[SECRET]"),
     ("email", re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"), "[EMAIL]"),
     ("ssn", re.compile(r"\b\d{3}-\d{2}-\d{4}\b"), "[SSN]"),
     ("phone", re.compile(r"\(\d{3}\)\s?\d{3}-\d{4}|\b\d{3}[-.]\d{3}[-.]\d{4}\b"), "[PHONE]"),
@@ -207,6 +208,32 @@ class _ScrubFilter(logging.Filter):
             record.exc_text = r.scrub(logging.Formatter().formatException(record.exc_info))
             record.exc_info = None
         return True
+
+
+_FACTORY_INSTALLED = False
+
+
+def install_global_secret_scrub() -> None:
+    """Scrub process secrets from EVERY log record, from any library's logger (the SDK's and the HTTP
+    client's child loggers don't pass through a filter on one parent logger)."""
+    global _FACTORY_INSTALLED
+    if _FACTORY_INSTALLED:
+        return
+    previous = logging.getLogRecordFactory()
+
+    def factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
+        record = previous(*args, **kwargs)
+        if _PROCESS_SECRETS:
+            try:
+                msg = record.getMessage()
+            except Exception:
+                return record
+            if any(s in msg for s in _PROCESS_SECRETS):
+                record.msg, record.args = Redactor(patterns=()).scrub(msg), None
+        return record
+
+    logging.setLogRecordFactory(factory)
+    _FACTORY_INSTALLED = True
 
 
 def install_log_filter(logger: logging.Logger | None = None) -> None:

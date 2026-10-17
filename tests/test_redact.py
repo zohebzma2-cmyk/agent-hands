@@ -108,6 +108,7 @@ def test_scrub_obj_walks_nested_structures():
         ("call (603) 555-0142", "555-0142"),
         ("DOB 04/12/1961", "04/12/1961"),
         ("key sk-ant-api03-AbC_dEf-123456789", "sk-ant-api03-AbC_dEf-123456789"),
+        ("key sk-or-v1-0123456789abcdef0123", "sk-or-v1-0123456789abcdef0123"),
     ],
 )
 def test_patterns_catch_undeclared_values(raw, leaked):

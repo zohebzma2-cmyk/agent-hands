@@ -20,7 +20,7 @@ from typing import Any
 import anthropic
 
 from agent_hands.llm.base import ProviderUnavailable, ToolCall, Turn
-from agent_hands.redact import register_process_secret
+from agent_hands.redact import install_global_secret_scrub, register_process_secret
 from agent_hands.secrets import SecretUnavailable, keychain_read
 
 KEYCHAIN_SERVICE = "anthropic-api-key"
@@ -47,6 +47,7 @@ class AnthropicProvider:
                 "No other key source is consulted."
             ) from None
         register_process_secret(key)
+        install_global_secret_scrub()
         for var in ("ANTHROPIC_BASE_URL", "ANTHROPIC_CUSTOM_HEADERS"):
             if os.environ.get(var):  # the SDK would honour these and send the key elsewhere
                 raise ProviderUnavailable(f"{var} is set; refusing to send the Keychain key anywhere but the API")
@@ -82,21 +83,25 @@ class AnthropicProvider:
             raise ProviderUnavailable("the Anthropic API rejected the Keychain key (401)") from None
         # Append exactly what came back (thinking blocks included): the history must stay append-only.
         self.messages.append({"role": "assistant", "content": resp.content})
-        calls = [ToolCall(b.id, b.name, dict(b.input)) for b in resp.content if b.type == "tool_use"]
-        text = "\n".join(b.text for b in resp.content if b.type == "text")
-        u = resp.usage
-        usage = {
-            "input_tokens": u.input_tokens,
-            "output_tokens": u.output_tokens,
-            "cache_read_input_tokens": getattr(u, "cache_read_input_tokens", None),
-            "cache_creation_input_tokens": getattr(u, "cache_creation_input_tokens", None),
-        }
-        return Turn(
-            tool_calls=calls,
-            text=text,
-            stop_reason=str(resp.stop_reason),
-            model=resp.model,
-            message_id=resp.id,
-            request_id=getattr(resp, "_request_id", None),
-            usage=usage,
-        )
+        return turn_from_message(resp)
+
+
+def turn_from_message(resp: Any) -> Turn:
+    calls = [ToolCall(b.id, b.name, dict(b.input)) for b in resp.content if b.type == "tool_use"]
+    text = "\n".join(b.text for b in resp.content if b.type == "text")
+    u = resp.usage
+    usage = {
+        "input_tokens": u.input_tokens,
+        "output_tokens": u.output_tokens,
+        "cache_read_input_tokens": getattr(u, "cache_read_input_tokens", None),
+        "cache_creation_input_tokens": getattr(u, "cache_creation_input_tokens", None),
+    }
+    return Turn(
+        tool_calls=calls,
+        text=text,
+        stop_reason=str(resp.stop_reason),
+        model=resp.model,
+        message_id=resp.id,
+        request_id=getattr(resp, "_request_id", None),
+        usage=usage,
+    )
