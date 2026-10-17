@@ -1,0 +1,22 @@
+[project]
+name = "agent-hands"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "Zoheb", email = "zohebzma@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=1.15.0",
+    "playwright>=1.64.0",
+    "pydantic>=2.14.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

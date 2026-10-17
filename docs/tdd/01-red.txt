@@ -1,0 +1,2225 @@
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF [ 85%]
+FFFFFFFFFFFF                                                             [100%]
+=================================== FAILURES ===================================
+________________ test_pii_value_is_replaced_with_a_named_token _________________
+
+    def test_pii_value_is_replaced_with_a_named_token():
+        r = Redactor()
+>       r.add("member_id", "900001", Sensitivity.PII)
+        ^^^^^
+E       AttributeError: 'Redactor' object has no attribute 'add'
+
+tests/test_redact.py:36: AttributeError
+________________________ test_secret_value_is_replaced _________________________
+
+    def test_secret_value_is_replaced():
+        r = Redactor()
+>       r.add("teller_password", "s3cret-synthetic", Sensitivity.SECRET)
+        ^^^^^
+E       AttributeError: 'Redactor' object has no attribute 'add'
+
+tests/test_redact.py:42: AttributeError
+___________________ test_public_and_internal_values_are_kept ___________________
+
+    def test_public_and_internal_values_are_kept():
+        r = Redactor()
+>       r.add("account_type", "Savings", Sensitivity.INTERNAL)
+        ^^^^^
+E       AttributeError: 'Redactor' object has no attribute 'add'
+
+tests/test_redact.py:48: AttributeError
+_____________ test_longer_values_win_over_overlapping_shorter_ones _____________
+
+    def test_longer_values_win_over_overlapping_shorter_ones():
+        r = Redactor()
+>       r.add("a", "9000", Sensitivity.PII)
+        ^^^^^
+E       AttributeError: 'Redactor' object has no attribute 'add'
+
+tests/test_redact.py:55: AttributeError
+_____________________ test_tiny_values_are_not_registered ______________________
+
+    def test_tiny_values_are_not_registered():
+        r = Redactor()
+>       r.add("flag", "1", Sensitivity.PII)
+        ^^^^^
+E       AttributeError: 'Redactor' object has no attribute 'add'
+
+tests/test_redact.py:62: AttributeError
+____________ test_decimal_values_are_scrubbed_in_common_renderings _____________
+
+    def test_decimal_values_are_scrubbed_in_common_renderings():
+        r = Redactor()
+>       r.add("initial_deposit", Decimal("1250.00"), Sensitivity.PII)
+        ^^^^^
+E       AttributeError: 'Redactor' object has no attribute 'add'
+
+tests/test_redact.py:68: AttributeError
+_________________ test_from_contract_uses_declared_sensitivity _________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_from_contract_uses_declared_sensitivity(artifact_dict):
+        artifact = CapabilityArtifact.model_validate(artifact_dict)
+>       params = artifact.bind_params({"member_id": "900001", "account_type": "Savings", "initial_deposit": "25.00"})
+                 ^^^^^^^^^^^^^^^^^^^^
+
+tests/test_redact.py:75: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+item = 'bind_params'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'CapabilityArtifact' object has no attribute 'bind_params'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+____________________ test_scrub_obj_walks_nested_structures ____________________
+
+    def test_scrub_obj_walks_nested_structures():
+        r = Redactor()
+>       r.add("member_id", "900001", Sensitivity.PII)
+        ^^^^^
+E       AttributeError: 'Redactor' object has no attribute 'add'
+
+tests/test_redact.py:92: AttributeError
+______ test_patterns_catch_undeclared_values[ssn 123-45-6789-123-45-6789] ______
+
+raw = 'ssn 123-45-6789', leaked = '123-45-6789'
+
+    @pytest.mark.parametrize(
+        "raw, leaked",
+        [
+            ("ssn 123-45-6789", "123-45-6789"),
+            ("acct 4401887722019", "4401887722019"),
+            ("mail ada.sample@example.test", "ada.sample@example.test"),
+            ("call (603) 555-0142", "555-0142"),
+            ("DOB 04/12/1961", "04/12/1961"),
+            ("key sk-ant-api03-AbC_dEf-123456789", "sk-ant-api03-AbC_dEf-123456789"),
+        ],
+    )
+    def test_patterns_catch_undeclared_values(raw, leaked):
+>       assert leaked not in Redactor().scrub(raw)
+                             ^^^^^^^^^^^^^^^^
+E       AttributeError: 'Redactor' object has no attribute 'scrub'
+
+tests/test_redact.py:114: AttributeError
+___ test_patterns_catch_undeclared_values[acct 4401887722019-4401887722019] ____
+
+raw = 'acct 4401887722019', leaked = '4401887722019'
+
+    @pytest.mark.parametrize(
+        "raw, leaked",
+        [
+            ("ssn 123-45-6789", "123-45-6789"),
+            ("acct 4401887722019", "4401887722019"),
+            ("mail ada.sample@example.test", "ada.sample@example.test"),
+            ("call (603) 555-0142", "555-0142"),
+            ("DOB 04/12/1961", "04/12/1961"),
+            ("key sk-ant-api03-AbC_dEf-123456789", "sk-ant-api03-AbC_dEf-123456789"),
+        ],
+    )
+    def test_patterns_catch_undeclared_values(raw, leaked):
+>       assert leaked not in Redactor().scrub(raw)
+                             ^^^^^^^^^^^^^^^^
+E       AttributeError: 'Redactor' object has no attribute 'scrub'
+
+tests/test_redact.py:114: AttributeError
+_ test_patterns_catch_undeclared_values[mail ada.sample@example.test-ada.sample@example.test] _
+
+raw = 'mail ada.sample@example.test', leaked = 'ada.sample@example.test'
+
+    @pytest.mark.parametrize(
+        "raw, leaked",
+        [
+            ("ssn 123-45-6789", "123-45-6789"),
+            ("acct 4401887722019", "4401887722019"),
+            ("mail ada.sample@example.test", "ada.sample@example.test"),
+            ("call (603) 555-0142", "555-0142"),
+            ("DOB 04/12/1961", "04/12/1961"),
+            ("key sk-ant-api03-AbC_dEf-123456789", "sk-ant-api03-AbC_dEf-123456789"),
+        ],
+    )
+    def test_patterns_catch_undeclared_values(raw, leaked):
+>       assert leaked not in Redactor().scrub(raw)
+                             ^^^^^^^^^^^^^^^^
+E       AttributeError: 'Redactor' object has no attribute 'scrub'
+
+tests/test_redact.py:114: AttributeError
+_____ test_patterns_catch_undeclared_values[call (603) 555-0142-555-0142] ______
+
+raw = 'call (603) 555-0142', leaked = '555-0142'
+
+    @pytest.mark.parametrize(
+        "raw, leaked",
+        [
+            ("ssn 123-45-6789", "123-45-6789"),
+            ("acct 4401887722019", "4401887722019"),
+            ("mail ada.sample@example.test", "ada.sample@example.test"),
+            ("call (603) 555-0142", "555-0142"),
+            ("DOB 04/12/1961", "04/12/1961"),
+            ("key sk-ant-api03-AbC_dEf-123456789", "sk-ant-api03-AbC_dEf-123456789"),
+        ],
+    )
+    def test_patterns_catch_undeclared_values(raw, leaked):
+>       assert leaked not in Redactor().scrub(raw)
+                             ^^^^^^^^^^^^^^^^
+E       AttributeError: 'Redactor' object has no attribute 'scrub'
+
+tests/test_redact.py:114: AttributeError
+_______ test_patterns_catch_undeclared_values[DOB 04/12/1961-04/12/1961] _______
+
+raw = 'DOB 04/12/1961', leaked = '04/12/1961'
+
+    @pytest.mark.parametrize(
+        "raw, leaked",
+        [
+            ("ssn 123-45-6789", "123-45-6789"),
+            ("acct 4401887722019", "4401887722019"),
+            ("mail ada.sample@example.test", "ada.sample@example.test"),
+            ("call (603) 555-0142", "555-0142"),
+            ("DOB 04/12/1961", "04/12/1961"),
+            ("key sk-ant-api03-AbC_dEf-123456789", "sk-ant-api03-AbC_dEf-123456789"),
+        ],
+    )
+    def test_patterns_catch_undeclared_values(raw, leaked):
+>       assert leaked not in Redactor().scrub(raw)
+                             ^^^^^^^^^^^^^^^^
+E       AttributeError: 'Redactor' object has no attribute 'scrub'
+
+tests/test_redact.py:114: AttributeError
+_ test_patterns_catch_undeclared_values[key sk-ant-api03-AbC_dEf-123456789-sk-ant-api03-AbC_dEf-123456789] _
+
+raw = 'key sk-ant-api03-AbC_dEf-123456789'
+leaked = 'sk-ant-api03-AbC_dEf-123456789'
+
+    @pytest.mark.parametrize(
+        "raw, leaked",
+        [
+            ("ssn 123-45-6789", "123-45-6789"),
+            ("acct 4401887722019", "4401887722019"),
+            ("mail ada.sample@example.test", "ada.sample@example.test"),
+            ("call (603) 555-0142", "555-0142"),
+            ("DOB 04/12/1961", "04/12/1961"),
+            ("key sk-ant-api03-AbC_dEf-123456789", "sk-ant-api03-AbC_dEf-123456789"),
+        ],
+    )
+    def test_patterns_catch_undeclared_values(raw, leaked):
+>       assert leaked not in Redactor().scrub(raw)
+                             ^^^^^^^^^^^^^^^^
+E       AttributeError: 'Redactor' object has no attribute 'scrub'
+
+tests/test_redact.py:114: AttributeError
+______________ test_account_numbers_keep_last_four_for_debugging _______________
+
+    def test_account_numbers_keep_last_four_for_debugging():
+>       assert Redactor().scrub("acct 4401887722019").endswith("2019]")
+               ^^^^^^^^^^^^^^^^
+E       AttributeError: 'Redactor' object has no attribute 'scrub'
+
+tests/test_redact.py:118: AttributeError
+_______________ test_patterns_can_be_disabled_for_unit_debugging _______________
+
+    def test_patterns_can_be_disabled_for_unit_debugging():
+>       assert Redactor(patterns=()).scrub("ssn 123-45-6789") == "ssn 123-45-6789"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'Redactor' object has no attribute 'scrub'
+
+tests/test_redact.py:122: AttributeError
+_____________ test_process_secrets_are_scrubbed_by_every_redactor ______________
+
+    def test_process_secrets_are_scrubbed_by_every_redactor():
+>       register_process_secret("not-a-real-key-but-long-enough")
+
+tests/test_redact.py:129: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = 'not-a-real-key-but-long-enough'
+
+>   def register_process_secret(value): raise NotImplementedError
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   NotImplementedError
+
+src/agent_hands/redact.py:5: NotImplementedError
+________________________ test_log_filter_scrubs_records ________________________
+
+caplog = <_pytest.logging.LogCaptureFixture object at 0x10bb5b050>
+
+    def test_log_filter_scrubs_records(caplog):
+>       register_process_secret("another-fake-secret-value")
+
+tests/test_redact.py:134: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = 'another-fake-secret-value'
+
+>   def register_process_secret(value): raise NotImplementedError
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   NotImplementedError
+
+src/agent_hands/redact.py:5: NotImplementedError
+_________________________ test_scrub_exception_message _________________________
+
+    def test_scrub_exception_message():
+>       register_process_secret("fake-secret-in-exception")
+
+tests/test_redact.py:144: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = 'fake-secret-in-exception'
+
+>   def register_process_secret(value): raise NotImplementedError
+                                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   NotImplementedError
+
+src/agent_hands/redact.py:5: NotImplementedError
+_____________________ test_mask_value[value0-none-812.40] ______________________
+
+value = Decimal('812.40'), mode = 'none', expected = '812.40'
+
+    @pytest.mark.parametrize(
+        "value, mode, expected",
+        [
+            (Decimal("812.40"), "none", "812.40"),
+            (Decimal("812.40"), "mask", "[REDACTED]"),
+            ("4401887722019", "last4", "••••2019"),
+            ("SA-77120", "drop", None),
+        ],
+    )
+    def test_mask_value(value, mode, expected):
+>       assert mask_value(value, mode) == expected
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_redact.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = Decimal('812.40'), mode = 'none'
+
+>   def mask_value(value, mode): raise NotImplementedError
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   NotImplementedError
+
+src/agent_hands/redact.py:4: NotImplementedError
+___________________ test_mask_value[value1-mask-[REDACTED]] ____________________
+
+value = Decimal('812.40'), mode = 'mask', expected = '[REDACTED]'
+
+    @pytest.mark.parametrize(
+        "value, mode, expected",
+        [
+            (Decimal("812.40"), "none", "812.40"),
+            (Decimal("812.40"), "mask", "[REDACTED]"),
+            ("4401887722019", "last4", "••••2019"),
+            ("SA-77120", "drop", None),
+        ],
+    )
+    def test_mask_value(value, mode, expected):
+>       assert mask_value(value, mode) == expected
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_redact.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = Decimal('812.40'), mode = 'mask'
+
+>   def mask_value(value, mode): raise NotImplementedError
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   NotImplementedError
+
+src/agent_hands/redact.py:4: NotImplementedError
+______ test_mask_value[4401887722019-last4-\u2022\u2022\u2022\u20222019] _______
+
+value = '4401887722019', mode = 'last4', expected = '••••2019'
+
+    @pytest.mark.parametrize(
+        "value, mode, expected",
+        [
+            (Decimal("812.40"), "none", "812.40"),
+            (Decimal("812.40"), "mask", "[REDACTED]"),
+            ("4401887722019", "last4", "••••2019"),
+            ("SA-77120", "drop", None),
+        ],
+    )
+    def test_mask_value(value, mode, expected):
+>       assert mask_value(value, mode) == expected
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_redact.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = '4401887722019', mode = 'last4'
+
+>   def mask_value(value, mode): raise NotImplementedError
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   NotImplementedError
+
+src/agent_hands/redact.py:4: NotImplementedError
+_____________________ test_mask_value[SA-77120-drop-None] ______________________
+
+value = 'SA-77120', mode = 'drop', expected = None
+
+    @pytest.mark.parametrize(
+        "value, mode, expected",
+        [
+            (Decimal("812.40"), "none", "812.40"),
+            (Decimal("812.40"), "mask", "[REDACTED]"),
+            ("4401887722019", "last4", "••••2019"),
+            ("SA-77120", "drop", None),
+        ],
+    )
+    def test_mask_value(value, mode, expected):
+>       assert mask_value(value, mode) == expected
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_redact.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = 'SA-77120', mode = 'drop'
+
+>   def mask_value(value, mode): raise NotImplementedError
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   NotImplementedError
+
+src/agent_hands/redact.py:4: NotImplementedError
+__________________ test_success_round_trips_through_the_union __________________
+
+    def test_success_round_trips_through_the_union():
+        r = Succeeded(**COMMON, steps=[step("s01")], outputs={"confirmation_number": "SA-77120"})
+>       back = parse_result(r.model_dump_json())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_result.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+text = '{"run_id":"rp-0001","capability":"cu_core.open_sub_account@1.0.0","artifact_hash":"sha256:abc","started_at":"2026-10-...:[{"index":0,"kind":"near_text","outcome":"unique"}]},"duration_ms":10}],"outputs":{"confirmation_number":"SA-77120"}}'
+
+>   def parse_result(text): raise NotImplementedError
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   NotImplementedError
+
+src/agent_hands/replay/result.py:19: NotImplementedError
+_______________ test_outcome_is_a_distinct_status_not_a_failure ________________
+
+    def test_outcome_is_a_distinct_status_not_a_failure():
+        r = Outcome(**COMMON, steps=[], code="member_not_found", message="No member found", at_step="s04")
+>       back = parse_result(r.model_dump_json())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_result.py:73: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+text = '{"run_id":"rp-0001","capability":"cu_core.open_sub_account@1.0.0","artifact_hash":"sha256:abc","started_at":"2026-10-...ams":{"member_id":"[PII:member_id]"},"steps":[],"code":"member_not_found","message":"No member found","at_step":"s04"}'
+
+>   def parse_result(text): raise NotImplementedError
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   NotImplementedError
+
+src/agent_hands/replay/result.py:19: NotImplementedError
+________________ test_failed_carries_step_expected_and_observed ________________
+
+    def test_failed_carries_step_expected_and_observed():
+        f = Failure(
+            kind=FailureKind.CHECKPOINT_FAILED,
+            step_id="s04",
+            intent="Search for the member",
+            expected="text_visible 'Member Detail' in main",
+            observed="main frame shows 'Member Search'",
+        )
+        r = Failed(**COMMON, steps=[], failure=f)
+>       back = parse_result(r.model_dump_json())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_result.py:87: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+text = '{"run_id":"rp-0001","capability":"cu_core.open_sub_account@1.0.0","artifact_hash":"sha256:abc","started_at":"2026-10-... for the member","expected":"text_visible \'Member Detail\' in main","observed":"main frame shows \'Member Search\'"}}'
+
+>   def parse_result(text): raise NotImplementedError
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   NotImplementedError
+
+src/agent_hands/replay/result.py:19: NotImplementedError
+___________________ test_needs_human_carries_reason_and_step ___________________
+
+    def test_needs_human_carries_reason_and_step():
+        r = NeedsHuman(**COMMON, steps=[], reason="approval_required", step_id="s08")
+>       back = parse_result(r.model_dump_json())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_result.py:95: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+text = '{"run_id":"rp-0001","capability":"cu_core.open_sub_account@1.0.0","artifact_hash":"sha256:abc","started_at":"2026-10-...","duration_ms":1234,"params":{"member_id":"[PII:member_id]"},"steps":[],"reason":"approval_required","step_id":"s08"}'
+
+>   def parse_result(text): raise NotImplementedError
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   NotImplementedError
+
+src/agent_hands/replay/result.py:19: NotImplementedError
+_______________________ test_unknown_status_is_rejected ________________________
+
+    def test_unknown_status_is_rejected():
+        payload = json.loads(Succeeded(**COMMON, steps=[], outputs={}).model_dump_json())
+        payload["status"] = "kinda_worked"
+        with pytest.raises(ValidationError):
+>           parse_result(json.dumps(payload))
+
+tests/test_result.py:104: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+text = '{"run_id": "rp-0001", "capability": "cu_core.open_sub_account@1.0.0", "artifact_hash": "sha256:abc", "started_at": "2..."duration_ms": 1234, "params": {"member_id": "[PII:member_id]"}, "steps": [], "outputs": {}, "status": "kinda_worked"}'
+
+>   def parse_result(text): raise NotImplementedError
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   NotImplementedError
+
+src/agent_hands/replay/result.py:19: NotImplementedError
+________________________ test_failed_requires_a_failure ________________________
+
+    def test_failed_requires_a_failure():
+>       with pytest.raises(ValidationError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_result.py:108: Failed
+_____________________ test_outcome_requires_code_and_step ______________________
+
+    def test_outcome_requires_code_and_step():
+>       with pytest.raises(ValidationError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_result.py:113: Failed
+__________________________ test_results_are_immutable __________________________
+
+    def test_results_are_immutable():
+        r = Succeeded(**COMMON, steps=[], outputs={})
+>       with pytest.raises(ValidationError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_result.py:119: Failed
+___________________ test_recoveries_ride_along_on_any_status ___________________
+
+    def test_recoveries_ride_along_on_any_status():
+        rec = Recovery(step_id="s05", condition="cu_core.announcement@1", action="dismissed", attempt=1)
+        r = Succeeded(**COMMON, steps=[], outputs={}, recoveries=[rec])
+>       assert parse_result(r.model_dump_json()).recoveries[0].condition == "cu_core.announcement@1"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_result.py:126: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+text = '{"run_id":"rp-0001","capability":"cu_core.open_sub_account@1.0.0","artifact_hash":"sha256:abc","started_at":"2026-10-...],"outputs":{},"recoveries":[{"step_id":"s05","condition":"cu_core.announcement@1","action":"dismissed","attempt":1}]}'
+
+>   def parse_result(text): raise NotImplementedError
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   NotImplementedError
+
+src/agent_hands/replay/result.py:19: NotImplementedError
+__________________ test_retryable_follows_kind[timeout-True] ___________________
+
+kind = <FailureKind.TIMEOUT: 'timeout'>, retryable = True
+
+    @pytest.mark.parametrize(
+        "kind, retryable",
+        [
+            (FailureKind.TIMEOUT, True),
+            (FailureKind.APP_ERROR, True),
+            (FailureKind.CHECKPOINT_FAILED, False),
+            (FailureKind.POLICY_DENIED, False),
+            (FailureKind.COMMIT_STATE_UNKNOWN, False),
+            (FailureKind.PARAM_INVALID, False),
+            (FailureKind.TARGET_NOT_FOUND, False),
+        ],
+    )
+    def test_retryable_follows_kind(kind, retryable):
+        f = Failure(kind=kind, step_id="s01", expected="x", observed="y")
+>       assert f.retryable is retryable
+               ^^^^^^^^^^^
+
+tests/test_result.py:146: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Failure(kind=<FailureKind.TIMEOUT: 'timeout'>, step_id='s01', expected='x', observed='y')
+item = 'retryable'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'Failure' object has no attribute 'retryable'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+_________________ test_retryable_follows_kind[app_error-True] __________________
+
+kind = <FailureKind.APP_ERROR: 'app_error'>, retryable = True
+
+    @pytest.mark.parametrize(
+        "kind, retryable",
+        [
+            (FailureKind.TIMEOUT, True),
+            (FailureKind.APP_ERROR, True),
+            (FailureKind.CHECKPOINT_FAILED, False),
+            (FailureKind.POLICY_DENIED, False),
+            (FailureKind.COMMIT_STATE_UNKNOWN, False),
+            (FailureKind.PARAM_INVALID, False),
+            (FailureKind.TARGET_NOT_FOUND, False),
+        ],
+    )
+    def test_retryable_follows_kind(kind, retryable):
+        f = Failure(kind=kind, step_id="s01", expected="x", observed="y")
+>       assert f.retryable is retryable
+               ^^^^^^^^^^^
+
+tests/test_result.py:146: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Failure(kind=<FailureKind.APP_ERROR: 'app_error'>, step_id='s01', expected='x', observed='y')
+item = 'retryable'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'Failure' object has no attribute 'retryable'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+_____________ test_retryable_follows_kind[checkpoint_failed-False] _____________
+
+kind = <FailureKind.CHECKPOINT_FAILED: 'checkpoint_failed'>, retryable = False
+
+    @pytest.mark.parametrize(
+        "kind, retryable",
+        [
+            (FailureKind.TIMEOUT, True),
+            (FailureKind.APP_ERROR, True),
+            (FailureKind.CHECKPOINT_FAILED, False),
+            (FailureKind.POLICY_DENIED, False),
+            (FailureKind.COMMIT_STATE_UNKNOWN, False),
+            (FailureKind.PARAM_INVALID, False),
+            (FailureKind.TARGET_NOT_FOUND, False),
+        ],
+    )
+    def test_retryable_follows_kind(kind, retryable):
+        f = Failure(kind=kind, step_id="s01", expected="x", observed="y")
+>       assert f.retryable is retryable
+               ^^^^^^^^^^^
+
+tests/test_result.py:146: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Failure(kind=<FailureKind.CHECKPOINT_FAILED: 'checkpoint_failed'>, step_id='s01', expected='x', observed='y')
+item = 'retryable'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'Failure' object has no attribute 'retryable'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+_______________ test_retryable_follows_kind[policy_denied-False] _______________
+
+kind = <FailureKind.POLICY_DENIED: 'policy_denied'>, retryable = False
+
+    @pytest.mark.parametrize(
+        "kind, retryable",
+        [
+            (FailureKind.TIMEOUT, True),
+            (FailureKind.APP_ERROR, True),
+            (FailureKind.CHECKPOINT_FAILED, False),
+            (FailureKind.POLICY_DENIED, False),
+            (FailureKind.COMMIT_STATE_UNKNOWN, False),
+            (FailureKind.PARAM_INVALID, False),
+            (FailureKind.TARGET_NOT_FOUND, False),
+        ],
+    )
+    def test_retryable_follows_kind(kind, retryable):
+        f = Failure(kind=kind, step_id="s01", expected="x", observed="y")
+>       assert f.retryable is retryable
+               ^^^^^^^^^^^
+
+tests/test_result.py:146: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Failure(kind=<FailureKind.POLICY_DENIED: 'policy_denied'>, step_id='s01', expected='x', observed='y')
+item = 'retryable'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'Failure' object has no attribute 'retryable'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+___________ test_retryable_follows_kind[commit_state_unknown-False] ____________
+
+kind = <FailureKind.COMMIT_STATE_UNKNOWN: 'commit_state_unknown'>
+retryable = False
+
+    @pytest.mark.parametrize(
+        "kind, retryable",
+        [
+            (FailureKind.TIMEOUT, True),
+            (FailureKind.APP_ERROR, True),
+            (FailureKind.CHECKPOINT_FAILED, False),
+            (FailureKind.POLICY_DENIED, False),
+            (FailureKind.COMMIT_STATE_UNKNOWN, False),
+            (FailureKind.PARAM_INVALID, False),
+            (FailureKind.TARGET_NOT_FOUND, False),
+        ],
+    )
+    def test_retryable_follows_kind(kind, retryable):
+        f = Failure(kind=kind, step_id="s01", expected="x", observed="y")
+>       assert f.retryable is retryable
+               ^^^^^^^^^^^
+
+tests/test_result.py:146: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Failure(kind=<FailureKind.COMMIT_STATE_UNKNOWN: 'commit_state_unknown'>, step_id='s01', expected='x', observed='y')
+item = 'retryable'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'Failure' object has no attribute 'retryable'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+_______________ test_retryable_follows_kind[param_invalid-False] _______________
+
+kind = <FailureKind.PARAM_INVALID: 'param_invalid'>, retryable = False
+
+    @pytest.mark.parametrize(
+        "kind, retryable",
+        [
+            (FailureKind.TIMEOUT, True),
+            (FailureKind.APP_ERROR, True),
+            (FailureKind.CHECKPOINT_FAILED, False),
+            (FailureKind.POLICY_DENIED, False),
+            (FailureKind.COMMIT_STATE_UNKNOWN, False),
+            (FailureKind.PARAM_INVALID, False),
+            (FailureKind.TARGET_NOT_FOUND, False),
+        ],
+    )
+    def test_retryable_follows_kind(kind, retryable):
+        f = Failure(kind=kind, step_id="s01", expected="x", observed="y")
+>       assert f.retryable is retryable
+               ^^^^^^^^^^^
+
+tests/test_result.py:146: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Failure(kind=<FailureKind.PARAM_INVALID: 'param_invalid'>, step_id='s01', expected='x', observed='y')
+item = 'retryable'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'Failure' object has no attribute 'retryable'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+_____________ test_retryable_follows_kind[target_not_found-False] ______________
+
+kind = <FailureKind.TARGET_NOT_FOUND: 'target_not_found'>, retryable = False
+
+    @pytest.mark.parametrize(
+        "kind, retryable",
+        [
+            (FailureKind.TIMEOUT, True),
+            (FailureKind.APP_ERROR, True),
+            (FailureKind.CHECKPOINT_FAILED, False),
+            (FailureKind.POLICY_DENIED, False),
+            (FailureKind.COMMIT_STATE_UNKNOWN, False),
+            (FailureKind.PARAM_INVALID, False),
+            (FailureKind.TARGET_NOT_FOUND, False),
+        ],
+    )
+    def test_retryable_follows_kind(kind, retryable):
+        f = Failure(kind=kind, step_id="s01", expected="x", observed="y")
+>       assert f.retryable is retryable
+               ^^^^^^^^^^^
+
+tests/test_result.py:146: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Failure(kind=<FailureKind.TARGET_NOT_FOUND: 'target_not_found'>, step_id='s01', expected='x', observed='y')
+item = 'retryable'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'Failure' object has no attribute 'retryable'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+______________________ test_primary_strategy_is_not_drift ______________________
+
+    def test_primary_strategy_is_not_drift():
+        r = Succeeded(**COMMON, steps=[step("s01", 0)], outputs={})
+>       assert r.drift == []
+               ^^^^^^^
+
+tests/test_result.py:155: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Succeeded(run_id='rp-0001', capability='cu_core.open_sub_account@1.0.0', artifact_hash='sha256:abc', started_at='2026-...nd='near_text', attempts=[StrategyAttempt(index=0, kind='near_text', outcome='unique')]), duration_ms=10)], outputs={})
+item = 'drift'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'Succeeded' object has no attribute 'drift'. Did you mean: 'dict'?
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+_________________ test_fallback_strategy_is_reported_as_drift __________________
+
+    def test_fallback_strategy_is_reported_as_drift():
+        r = Succeeded(**COMMON, steps=[step("s01", 0), step("s04", 1, "none", "unique")], outputs={})
+>       assert len(r.drift) == 1
+                   ^^^^^^^
+
+tests/test_result.py:160: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Succeeded(run_id='rp-0001', capability='cu_core.open_sub_account@1.0.0', artifact_hash='sha256:abc', started_at='2026-...d='near_text', outcome='none'), StrategyAttempt(index=1, kind='css', outcome='unique')]), duration_ms=10)], outputs={})
+item = 'drift'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'Succeeded' object has no attribute 'drift'. Did you mean: 'dict'?
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+___________________________ test_drift_is_serialised ___________________________
+
+    def test_drift_is_serialised():
+        r = Succeeded(**COMMON, steps=[step("s04", 1, "ambiguous", "unique")], outputs={})
+>       assert json.loads(r.model_dump_json())["drift"][0]["primary_outcome"] == "ambiguous"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'drift'
+
+tests/test_result.py:169: KeyError
+________________ test_persisted_view_masks_outputs_by_contract _________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_persisted_view_masks_outputs_by_contract(artifact_dict):
+        artifact = CapabilityArtifact.model_validate(artifact_dict)
+        r = Succeeded(
+            **COMMON,
+            steps=[],
+            outputs={"share_balance": Decimal("812.40"), "confirmation_number": "SA-77120"},
+        )
+        redactor = Redactor()
+>       persisted = r.persisted(artifact, redactor)
+                    ^^^^^^^^^^^
+
+tests/test_result.py:183: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Succeeded(run_id='rp-0001', capability='cu_core.open_sub_account@1.0.0', artifact_hash='sha256:abc', started_at='2026-...ber_id': '[PII:member_id]'}, steps=[], outputs={'share_balance': Decimal('812.40'), 'confirmation_number': 'SA-77120'})
+item = 'persisted'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'Succeeded' object has no attribute 'persisted'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+_____________________ test_persisted_view_scrubs_free_text _____________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_persisted_view_scrubs_free_text(artifact_dict):
+        artifact = CapabilityArtifact.model_validate(artifact_dict)
+        r = Failed(
+            **COMMON,
+            steps=[],
+            failure=Failure(
+                kind=FailureKind.CHECKPOINT_FAILED,
+                step_id="s04",
+                expected="Member Detail",
+                observed="row: Ada Sample 123-45-6789",
+            ),
+        )
+>       assert "123-45-6789" not in json.dumps(r.persisted(artifact, Redactor()))
+                                               ^^^^^^^^^^^
+
+tests/test_result.py:203: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = Failed(run_id='rp-0001', capability='cu_core.open_sub_account@1.0.0', artifact_hash='sha256:abc', started_at='2026-10-...CKPOINT_FAILED: 'checkpoint_failed'>, step_id='s04', expected='Member Detail', observed='row: Ada Sample 123-45-6789'))
+item = 'persisted'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'Failed' object has no attribute 'persisted'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+_____________________________ test_example_parses ______________________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_example_parses(artifact_dict):
+        a = load(artifact_dict)
+>       assert a.capability.id == "cu_core.open_sub_account"
+               ^^^^^^^^^^^^^^^
+E       AttributeError: 'dict' object has no attribute 'id'
+
+tests/test_schema.py:27: AttributeError
+_______________________ test_canonical_json_round_trips ________________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_canonical_json_round_trips(artifact_dict):
+        a = load(artifact_dict)
+>       text = a.canonical_json()
+               ^^^^^^^^^^^^^^^^
+
+tests/test_schema.py:33: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+item = 'canonical_json'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'CapabilityArtifact' object has no attribute 'canonical_json'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+________________ test_content_hash_ignores_key_order_and_status ________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_content_hash_ignores_key_order_and_status(artifact_dict):
+        a = load(artifact_dict)
+        reordered = json.loads(json.dumps(artifact_dict, sort_keys=True))
+        reordered["capability"]["status"] = "approved"
+        reordered["provenance"]["approved_by"] = "someone"
+        b = load(reordered)
+>       assert a.content_hash() == b.content_hash()
+               ^^^^^^^^^^^^^^
+
+tests/test_schema.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+item = 'content_hash'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'CapabilityArtifact' object has no attribute 'content_hash'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+________________ test_content_hash_changes_when_a_step_changes _________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_content_hash_changes_when_a_step_changes(artifact_dict):
+        a = load(artifact_dict)
+        artifact_dict["steps"][3]["intent"] = "Search for the member"
+>       assert load(artifact_dict).content_hash() != a.content_hash()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_schema.py:52: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+item = 'content_hash'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'CapabilityArtifact' object has no attribute 'content_hash'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+___________________ test_every_step_needs_its_own_checkpoint ___________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_every_step_needs_its_own_checkpoint(artifact_dict):
+        del artifact_dict["steps"][4]["expect"]
+>       with pytest.raises(ValidationError, match="expect"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:60: Failed
+_________________ test_checkpoint_needs_at_least_one_condition _________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_checkpoint_needs_at_least_one_condition(artifact_dict):
+        artifact_dict["steps"][4]["expect"] = {"all_of": [], "timeout_ms": 1000}
+>       with pytest.raises(ValidationError, match="at least one condition"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:66: Failed
+_____________________ test_params_must_declare_sensitivity _____________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_params_must_declare_sensitivity(artifact_dict):
+        del artifact_dict["params"][0]["sensitivity"]
+>       with pytest.raises(ValidationError, match="sensitivity"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:72: Failed
+____________________ test_outputs_must_declare_sensitivity _____________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_outputs_must_declare_sensitivity(artifact_dict):
+        del artifact_dict["outputs"][0]["sensitivity"]
+>       with pytest.raises(ValidationError, match="sensitivity"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:78: Failed
+_______________ test_secret_sensitivity_is_not_allowed_on_params _______________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_secret_sensitivity_is_not_allowed_on_params(artifact_dict):
+        artifact_dict["params"][0]["sensitivity"] = "secret"
+>       with pytest.raises(ValidationError, match="secrets"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:84: Failed
+________________________ test_extra_fields_are_rejected ________________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_extra_fields_are_rejected(artifact_dict):
+        artifact_dict["steps"][0]["selector"] = "#oops"
+>       with pytest.raises(ValidationError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:90: Failed
+________________________ test_schema_version_is_pinned _________________________
+
+artifact_dict = {'schema_version': '2.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_schema_version_is_pinned(artifact_dict):
+        artifact_dict["schema_version"] = "2.0"
+>       with pytest.raises(ValidationError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:96: Failed
+_________________________ test_version_must_be_semver __________________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': 'v1', 'title': 'Open a sub-accou...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_version_must_be_semver(artifact_dict):
+        artifact_dict["capability"]["version"] = "v1"
+>       with pytest.raises(ValidationError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:102: Failed
+_______________________ test_duplicate_step_ids_rejected _______________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_duplicate_step_ids_rejected(artifact_dict):
+        artifact_dict["steps"][5]["id"] = "s04"
+>       with pytest.raises(ValidationError, match="duplicate step id"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:111: Failed
+____________________ test_unknown_param_in_action_rejected _____________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_unknown_param_in_action_rejected(artifact_dict):
+        artifact_dict["steps"][3]["action"]["value"] = {"param": "ssn"}
+>       with pytest.raises(ValidationError, match="unknown param 'ssn'"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:117: Failed
+__________________ test_unknown_param_inside_locator_rejected __________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_unknown_param_inside_locator_rejected(artifact_dict):
+        artifact_dict["steps"][4]["target"]["strategies"].append(
+            {"kind": "text", "text": {"param": "member_name"}, "match": "exact"}
+        )
+>       with pytest.raises(ValidationError, match="unknown param 'member_name'"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:125: Failed
+_________________________ test_unknown_secret_rejected _________________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_unknown_secret_rejected(artifact_dict):
+        artifact_dict["steps"][1]["action"]["value"] = {"secret": "admin_password"}
+>       with pytest.raises(ValidationError, match="unknown secret 'admin_password'"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:131: Failed
+______________________ test_secret_ref_scheme_is_checked _______________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_secret_ref_scheme_is_checked(artifact_dict):
+        artifact_dict["secrets"][1]["ref"] = "hunter2"
+>       with pytest.raises(ValidationError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:137: Failed
+________________ test_output_source_step_must_read_that_output _________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_output_source_step_must_read_that_output(artifact_dict):
+        artifact_dict["outputs"][0]["source_step"] = "s04"
+>       with pytest.raises(ValidationError, match="share_balance"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:143: Failed
+__________________ test_read_step_must_name_a_declared_output __________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_read_step_must_name_a_declared_output(artifact_dict):
+        artifact_dict["steps"][4]["action"]["output"] = "ssn"
+>       with pytest.raises(ValidationError, match="unknown output 'ssn'"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:149: Failed
+__________________ test_resume_anchor_must_be_an_earlier_step __________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_resume_anchor_must_be_an_earlier_step(artifact_dict):
+        artifact_dict["steps"][4]["resume_anchor"] = "s09"
+>       with pytest.raises(ValidationError, match="resume_anchor"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:155: Failed
+________________________ test_outcome_steps_must_exist _________________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_outcome_steps_must_exist(artifact_dict):
+        artifact_dict["outcomes"][0]["at_steps"] = ["s99"]
+>       with pytest.raises(ValidationError, match="s99"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:161: Failed
+_______________________ test_login_steps_must_come_first _______________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_login_steps_must_come_first(artifact_dict):
+        artifact_dict["steps"][5]["phase"] = "login"
+>       with pytest.raises(ValidationError, match="login"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:167: Failed
+__________________________ test_fill_requires_a_value __________________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_fill_requires_a_value(artifact_dict):
+        del artifact_dict["steps"][3]["action"]["value"]
+>       with pytest.raises(ValidationError, match="fill"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:176: Failed
+______________________ test_click_must_not_carry_a_value _______________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_click_must_not_carry_a_value(artifact_dict):
+        artifact_dict["steps"][2]["action"]["value"] = {"literal": "x"}
+>       with pytest.raises(ValidationError, match="click"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:182: Failed
+____________________ test_non_navigate_steps_need_a_target _____________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_non_navigate_steps_need_a_target(artifact_dict):
+        del artifact_dict["steps"][2]["target"]
+>       with pytest.raises(ValidationError, match="target"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:188: Failed
+_____________ test_irreversible_step_needs_two_agreeing_strategies _____________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_irreversible_step_needs_two_agreeing_strategies(artifact_dict):
+        artifact_dict["steps"][7]["target"]["min_agreement"] = 1
+>       with pytest.raises(ValidationError, match="irreversible"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:197: Failed
+_______________ test_min_agreement_cannot_exceed_strategy_count ________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_min_agreement_cannot_exceed_strategy_count(artifact_dict):
+        artifact_dict["steps"][3]["target"]["min_agreement"] = 3
+>       with pytest.raises(ValidationError, match="min_agreement"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:203: Failed
+____________________ test_capability_risk_covers_every_step ____________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_capability_risk_covers_every_step(artifact_dict):
+        artifact_dict["capability"]["risk"] = "mutating"
+>       with pytest.raises(ValidationError, match="risk"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValidationError
+
+tests/test_schema.py:209: Failed
+________________________ test_irreversible_steps_listed ________________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_irreversible_steps_listed(artifact_dict):
+>       assert [s.id for s in load(artifact_dict).irreversible_steps()] == ["s08"]
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_schema.py:214: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+item = 'irreversible_steps'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'CapabilityArtifact' object has no attribute 'irreversible_steps'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+________________________ test_bind_params_coerces_types ________________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_bind_params_coerces_types(artifact_dict):
+        a = load(artifact_dict)
+>       bound = a.bind_params({"member_id": "900001", "account_type": "Savings", "initial_deposit": "25.50"})
+                ^^^^^^^^^^^^^
+
+tests/test_schema.py:222: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+item = 'bind_params'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'CapabilityArtifact' object has no attribute 'bind_params'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+____________ test_bind_params_rejects_bad_input[params0-member_id] _____________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+params = {'member_id': '12', 'account_type': 'Savings', 'initial_deposit': '25'}
+field = 'member_id'
+
+    @pytest.mark.parametrize(
+        "params, field",
+        [
+            ({"member_id": "12", "account_type": "Savings", "initial_deposit": "25"}, "member_id"),
+            ({"member_id": "900001", "account_type": "Checking", "initial_deposit": "25"}, "account_type"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "1.00"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "abc"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "25", "x": "1"}, "x"),
+        ],
+    )
+    def test_bind_params_rejects_bad_input(artifact_dict, params, field):
+        a = load(artifact_dict)
+        with pytest.raises(ParamError) as ei:
+>           a.bind_params(params)
+            ^^^^^^^^^^^^^
+
+tests/test_schema.py:241: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+item = 'bind_params'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'CapabilityArtifact' object has no attribute 'bind_params'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+___________ test_bind_params_rejects_bad_input[params1-account_type] ___________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+params = {'member_id': '900001', 'account_type': 'Checking', 'initial_deposit': '25'}
+field = 'account_type'
+
+    @pytest.mark.parametrize(
+        "params, field",
+        [
+            ({"member_id": "12", "account_type": "Savings", "initial_deposit": "25"}, "member_id"),
+            ({"member_id": "900001", "account_type": "Checking", "initial_deposit": "25"}, "account_type"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "1.00"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "abc"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "25", "x": "1"}, "x"),
+        ],
+    )
+    def test_bind_params_rejects_bad_input(artifact_dict, params, field):
+        a = load(artifact_dict)
+        with pytest.raises(ParamError) as ei:
+>           a.bind_params(params)
+            ^^^^^^^^^^^^^
+
+tests/test_schema.py:241: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+item = 'bind_params'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'CapabilityArtifact' object has no attribute 'bind_params'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+_________ test_bind_params_rejects_bad_input[params2-initial_deposit] __________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+params = {'member_id': '900001', 'account_type': 'Savings', 'initial_deposit': '1.00'}
+field = 'initial_deposit'
+
+    @pytest.mark.parametrize(
+        "params, field",
+        [
+            ({"member_id": "12", "account_type": "Savings", "initial_deposit": "25"}, "member_id"),
+            ({"member_id": "900001", "account_type": "Checking", "initial_deposit": "25"}, "account_type"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "1.00"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "abc"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "25", "x": "1"}, "x"),
+        ],
+    )
+    def test_bind_params_rejects_bad_input(artifact_dict, params, field):
+        a = load(artifact_dict)
+        with pytest.raises(ParamError) as ei:
+>           a.bind_params(params)
+            ^^^^^^^^^^^^^
+
+tests/test_schema.py:241: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+item = 'bind_params'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'CapabilityArtifact' object has no attribute 'bind_params'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+_________ test_bind_params_rejects_bad_input[params3-initial_deposit] __________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+params = {'member_id': '900001', 'account_type': 'Savings', 'initial_deposit': 'abc'}
+field = 'initial_deposit'
+
+    @pytest.mark.parametrize(
+        "params, field",
+        [
+            ({"member_id": "12", "account_type": "Savings", "initial_deposit": "25"}, "member_id"),
+            ({"member_id": "900001", "account_type": "Checking", "initial_deposit": "25"}, "account_type"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "1.00"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "abc"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "25", "x": "1"}, "x"),
+        ],
+    )
+    def test_bind_params_rejects_bad_input(artifact_dict, params, field):
+        a = load(artifact_dict)
+        with pytest.raises(ParamError) as ei:
+>           a.bind_params(params)
+            ^^^^^^^^^^^^^
+
+tests/test_schema.py:241: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+item = 'bind_params'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'CapabilityArtifact' object has no attribute 'bind_params'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+_________ test_bind_params_rejects_bad_input[params4-initial_deposit] __________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+params = {'member_id': '900001', 'account_type': 'Savings'}
+field = 'initial_deposit'
+
+    @pytest.mark.parametrize(
+        "params, field",
+        [
+            ({"member_id": "12", "account_type": "Savings", "initial_deposit": "25"}, "member_id"),
+            ({"member_id": "900001", "account_type": "Checking", "initial_deposit": "25"}, "account_type"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "1.00"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "abc"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "25", "x": "1"}, "x"),
+        ],
+    )
+    def test_bind_params_rejects_bad_input(artifact_dict, params, field):
+        a = load(artifact_dict)
+        with pytest.raises(ParamError) as ei:
+>           a.bind_params(params)
+            ^^^^^^^^^^^^^
+
+tests/test_schema.py:241: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+item = 'bind_params'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'CapabilityArtifact' object has no attribute 'bind_params'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+________________ test_bind_params_rejects_bad_input[params5-x] _________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+params = {'member_id': '900001', 'account_type': 'Savings', 'initial_deposit': '25', 'x': '1'}
+field = 'x'
+
+    @pytest.mark.parametrize(
+        "params, field",
+        [
+            ({"member_id": "12", "account_type": "Savings", "initial_deposit": "25"}, "member_id"),
+            ({"member_id": "900001", "account_type": "Checking", "initial_deposit": "25"}, "account_type"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "1.00"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "abc"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings"}, "initial_deposit"),
+            ({"member_id": "900001", "account_type": "Savings", "initial_deposit": "25", "x": "1"}, "x"),
+        ],
+    )
+    def test_bind_params_rejects_bad_input(artifact_dict, params, field):
+        a = load(artifact_dict)
+        with pytest.raises(ParamError) as ei:
+>           a.bind_params(params)
+            ^^^^^^^^^^^^^
+
+tests/test_schema.py:241: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+item = 'bind_params'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'CapabilityArtifact' object has no attribute 'bind_params'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+________________ test_param_error_never_echoes_sensitive_values ________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_param_error_never_echoes_sensitive_values(artifact_dict):
+        a = load(artifact_dict)
+        with pytest.raises(ParamError) as ei:
+>           a.bind_params({"member_id": "123-45-6789", "account_type": "Savings", "initial_deposit": "25"})
+            ^^^^^^^^^^^^^
+
+tests/test_schema.py:248: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+item = 'bind_params'
+
+    def __getattr__(self, item: str) -> Any:
+        private_attributes = object.__getattribute__(self, '__private_attributes__')
+        if item in private_attributes:
+            attribute = private_attributes[item]
+            if hasattr(attribute, '__get__'):
+                return attribute.__get__(self, type(self))  # type: ignore
+    
+            try:
+                # Note: self.__pydantic_private__ cannot be None if self.__private_attributes__ has items
+                return self.__pydantic_private__[item]  # type: ignore
+            except KeyError as exc:
+                raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}') from exc
+        else:
+            # `__pydantic_extra__` can fail to be set if the model is not yet fully initialized.
+            # See `BaseModel.__repr_args__` for more details
+            try:
+                pydantic_extra = object.__getattribute__(self, '__pydantic_extra__')
+            except AttributeError:
+                pydantic_extra = None
+    
+            if pydantic_extra and item in pydantic_extra:
+                return pydantic_extra[item]
+            else:
+                if hasattr(self.__class__, item):
+                    return super().__getattribute__(item)  # Raises AttributeError if appropriate
+                else:
+                    # this is the current error
+>                   raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
+E                   AttributeError: 'CapabilityArtifact' object has no attribute 'bind_params'
+
+.venv/lib/python3.12/site-packages/pydantic/main.py:1105: AttributeError
+_________________ test_required_bump_major_on_contract_change __________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_required_bump_major_on_contract_change(artifact_dict):
+        a = load(artifact_dict)
+        artifact_dict["params"][1]["enum"].append("Checking")
+>       assert required_bump(a, load(artifact_dict)) == "major"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_schema.py:258: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+old = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+new = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+
+    def required_bump(old, new):
+>       raise NotImplementedError
+E       NotImplementedError
+
+src/agent_hands/artifact/schema.py:11: NotImplementedError
+__________________ test_required_bump_minor_on_locator_change __________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_required_bump_minor_on_locator_change(artifact_dict):
+        a = load(artifact_dict)
+        artifact_dict["steps"][3]["target"]["strategies"][1]["selector"] = "input[name=f2]"
+>       assert required_bump(a, load(artifact_dict)) == "minor"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_schema.py:264: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+old = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+new = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+
+    def required_bump(old, new):
+>       raise NotImplementedError
+E       NotImplementedError
+
+src/agent_hands/artifact/schema.py:11: NotImplementedError
+________________ test_required_bump_patch_on_description_change ________________
+
+artifact_dict = {'schema_version': '1.0', 'capability': {'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'Open a sub-ac...: 'internal', ...}, {'name': 'initial_deposit', 'type': 'decimal', 'minimum': '5.00', 'maximum': '5000.00', ...}], ...}
+
+    def test_required_bump_patch_on_description_change(artifact_dict):
+        a = load(artifact_dict)
+        artifact_dict["capability"]["description"] = "Opens a sub-account."
+>       assert required_bump(a, load(artifact_dict)) == "patch"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_schema.py:270: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+old = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+new = CapabilityArtifact(schema_version='1.0', capability={'id': 'cu_core.open_sub_account', 'version': '1.0.0', 'title': 'O...ch': 'contains'}], 'timeout_ms': 5000}, provenance={'compiler_version': '0.1.0', 'created_at': '2026-10-17T00:00:00Z'})
+
+    def required_bump(old, new):
+>       raise NotImplementedError
+E       NotImplementedError
+
+src/agent_hands/artifact/schema.py:11: NotImplementedError
+=========================== short test summary info ============================
+FAILED tests/test_redact.py::test_pii_value_is_replaced_with_a_named_token - ...
+FAILED tests/test_redact.py::test_secret_value_is_replaced - AttributeError: ...
+FAILED tests/test_redact.py::test_public_and_internal_values_are_kept - Attri...
+FAILED tests/test_redact.py::test_longer_values_win_over_overlapping_shorter_ones
+FAILED tests/test_redact.py::test_tiny_values_are_not_registered - AttributeE...
+FAILED tests/test_redact.py::test_decimal_values_are_scrubbed_in_common_renderings
+FAILED tests/test_redact.py::test_from_contract_uses_declared_sensitivity - A...
+FAILED tests/test_redact.py::test_scrub_obj_walks_nested_structures - Attribu...
+FAILED tests/test_redact.py::test_patterns_catch_undeclared_values[ssn 123-45-6789-123-45-6789]
+FAILED tests/test_redact.py::test_patterns_catch_undeclared_values[acct 4401887722019-4401887722019]
+FAILED tests/test_redact.py::test_patterns_catch_undeclared_values[mail ada.sample@example.test-ada.sample@example.test]
+FAILED tests/test_redact.py::test_patterns_catch_undeclared_values[call (603) 555-0142-555-0142]
+FAILED tests/test_redact.py::test_patterns_catch_undeclared_values[DOB 04/12/1961-04/12/1961]
+FAILED tests/test_redact.py::test_patterns_catch_undeclared_values[key sk-ant-api03-AbC_dEf-123456789-sk-ant-api03-AbC_dEf-123456789]
+FAILED tests/test_redact.py::test_account_numbers_keep_last_four_for_debugging
+FAILED tests/test_redact.py::test_patterns_can_be_disabled_for_unit_debugging
+FAILED tests/test_redact.py::test_process_secrets_are_scrubbed_by_every_redactor
+FAILED tests/test_redact.py::test_log_filter_scrubs_records - NotImplementedE...
+FAILED tests/test_redact.py::test_scrub_exception_message - NotImplementedError
+FAILED tests/test_redact.py::test_mask_value[value0-none-812.40] - NotImpleme...
+FAILED tests/test_redact.py::test_mask_value[value1-mask-[REDACTED]] - NotImp...
+FAILED tests/test_redact.py::test_mask_value[4401887722019-last4-\u2022\u2022\u2022\u20222019]
+FAILED tests/test_redact.py::test_mask_value[SA-77120-drop-None] - NotImpleme...
+FAILED tests/test_result.py::test_success_round_trips_through_the_union - Not...
+FAILED tests/test_result.py::test_outcome_is_a_distinct_status_not_a_failure
+FAILED tests/test_result.py::test_failed_carries_step_expected_and_observed
+FAILED tests/test_result.py::test_needs_human_carries_reason_and_step - NotIm...
+FAILED tests/test_result.py::test_unknown_status_is_rejected - NotImplemented...
+FAILED tests/test_result.py::test_failed_requires_a_failure - Failed: DID NOT...
+FAILED tests/test_result.py::test_outcome_requires_code_and_step - Failed: DI...
+FAILED tests/test_result.py::test_results_are_immutable - Failed: DID NOT RAI...
+FAILED tests/test_result.py::test_recoveries_ride_along_on_any_status - NotIm...
+FAILED tests/test_result.py::test_retryable_follows_kind[timeout-True] - Attr...
+FAILED tests/test_result.py::test_retryable_follows_kind[app_error-True] - At...
+FAILED tests/test_result.py::test_retryable_follows_kind[checkpoint_failed-False]
+FAILED tests/test_result.py::test_retryable_follows_kind[policy_denied-False]
+FAILED tests/test_result.py::test_retryable_follows_kind[commit_state_unknown-False]
+FAILED tests/test_result.py::test_retryable_follows_kind[param_invalid-False]
+FAILED tests/test_result.py::test_retryable_follows_kind[target_not_found-False]
+FAILED tests/test_result.py::test_primary_strategy_is_not_drift - AttributeEr...
+FAILED tests/test_result.py::test_fallback_strategy_is_reported_as_drift - At...
+FAILED tests/test_result.py::test_drift_is_serialised - KeyError: 'drift'
+FAILED tests/test_result.py::test_persisted_view_masks_outputs_by_contract - ...
+FAILED tests/test_result.py::test_persisted_view_scrubs_free_text - Attribute...
+FAILED tests/test_schema.py::test_example_parses - AttributeError: 'dict' obj...
+FAILED tests/test_schema.py::test_canonical_json_round_trips - AttributeError...
+FAILED tests/test_schema.py::test_content_hash_ignores_key_order_and_status
+FAILED tests/test_schema.py::test_content_hash_changes_when_a_step_changes - ...
+FAILED tests/test_schema.py::test_every_step_needs_its_own_checkpoint - Faile...
+FAILED tests/test_schema.py::test_checkpoint_needs_at_least_one_condition - F...
+FAILED tests/test_schema.py::test_params_must_declare_sensitivity - Failed: D...
+FAILED tests/test_schema.py::test_outputs_must_declare_sensitivity - Failed: ...
+FAILED tests/test_schema.py::test_secret_sensitivity_is_not_allowed_on_params
+FAILED tests/test_schema.py::test_extra_fields_are_rejected - Failed: DID NOT...
+FAILED tests/test_schema.py::test_schema_version_is_pinned - Failed: DID NOT ...
+FAILED tests/test_schema.py::test_version_must_be_semver - Failed: DID NOT RA...
+FAILED tests/test_schema.py::test_duplicate_step_ids_rejected - Failed: DID N...
+FAILED tests/test_schema.py::test_unknown_param_in_action_rejected - Failed: ...
+FAILED tests/test_schema.py::test_unknown_param_inside_locator_rejected - Fai...
+FAILED tests/test_schema.py::test_unknown_secret_rejected - Failed: DID NOT R...
+FAILED tests/test_schema.py::test_secret_ref_scheme_is_checked - Failed: DID ...
+FAILED tests/test_schema.py::test_output_source_step_must_read_that_output - ...
+FAILED tests/test_schema.py::test_read_step_must_name_a_declared_output - Fai...
+FAILED tests/test_schema.py::test_resume_anchor_must_be_an_earlier_step - Fai...
+FAILED tests/test_schema.py::test_outcome_steps_must_exist - Failed: DID NOT ...
+FAILED tests/test_schema.py::test_login_steps_must_come_first - Failed: DID N...
+FAILED tests/test_schema.py::test_fill_requires_a_value - Failed: DID NOT RAI...
+FAILED tests/test_schema.py::test_click_must_not_carry_a_value - Failed: DID ...
+FAILED tests/test_schema.py::test_non_navigate_steps_need_a_target - Failed: ...
+FAILED tests/test_schema.py::test_irreversible_step_needs_two_agreeing_strategies
+FAILED tests/test_schema.py::test_min_agreement_cannot_exceed_strategy_count
+FAILED tests/test_schema.py::test_capability_risk_covers_every_step - Failed:...
+FAILED tests/test_schema.py::test_irreversible_steps_listed - AttributeError:...
+FAILED tests/test_schema.py::test_bind_params_coerces_types - AttributeError:...
+FAILED tests/test_schema.py::test_bind_params_rejects_bad_input[params0-member_id]
+FAILED tests/test_schema.py::test_bind_params_rejects_bad_input[params1-account_type]
+FAILED tests/test_schema.py::test_bind_params_rejects_bad_input[params2-initial_deposit]
+FAILED tests/test_schema.py::test_bind_params_rejects_bad_input[params3-initial_deposit]
+FAILED tests/test_schema.py::test_bind_params_rejects_bad_input[params4-initial_deposit]
+FAILED tests/test_schema.py::test_bind_params_rejects_bad_input[params5-x] - ...
+FAILED tests/test_schema.py::test_param_error_never_echoes_sensitive_values
+FAILED tests/test_schema.py::test_required_bump_major_on_contract_change - No...
+FAILED tests/test_schema.py::test_required_bump_minor_on_locator_change - Not...
+FAILED tests/test_schema.py::test_required_bump_patch_on_description_change
+84 failed in 0.35s
