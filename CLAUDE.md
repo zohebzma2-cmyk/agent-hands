@@ -24,7 +24,8 @@ and documented. The discovery run in `evidence/` must be a real LLM run.
 ## Stack
 
 Python 3.12, uv, Playwright (Chromium), pydantic v2, pytest. Keep dependencies small.
-LLM: Anthropic API, model `claude-opus-5-5`, set as a config value behind a provider interface.
+LLM: Claude Opus 5.5 behind a provider interface. Default: OpenRouter (`anthropic/claude-opus-5.5`,
+routed to Anthropic only). Direct: Anthropic (`claude-opus-5-5`).
 Irreversible steps are approved live by a human at the terminal (discovery) or by an explicit, run-bound caller
 approval (replay); unattended replay stops at them.
 
@@ -37,20 +38,24 @@ uv sync                                   # install
 uv run playwright install chromium        # browser
 uv run pytest                             # tests (offline, fake LLM backend)
 uv run hands target                       # start the hostile target app
-uv run hands discover --spec specs/open_sub_account.json -p k=v ... --headed   # real LLM run
+uv run hands discover --spec specs/open_sub_account.json -p k=v ... --headed [--provider openrouter|anthropic]
+uv run hands validate <draft> -p k=v ...  # re-run a draft's validation (human approval), promote it
 uv run hands replay <artifact> -p k=v ... [--approve s13] [--fault name[:mode][:ms][@route]]
+                    [--tenant lakeside] [--no-override] [--operator terminal --headed] [--allow-draft]
 uv run hands stability <artifact> -p k=v ... --approve s13 --runs 20
 uv run hands show <artifact>
+uv run python scripts/audit_evidence.py evidence   # secrets/PII audit of evidence
+uv run python scripts/scan_history.py              # secrets/paths across git history
 ```
 
 ## Hard rules
 
 - **Synthetic data only.** Fake members, fake account numbers, fake credentials. No real PII ever.
-- **No secrets in the repo.** The Anthropic key is read only from the macOS Keychain (service
-  `anthropic-api-key`), inside the provider, when the live backend starts. If that read fails, stop
-  and tell me; never look for the key anywhere else (no env vars, no files, no ~/.zshenv).
-  Never print, log or write it, including evidence, traces, fixtures, exception messages and test
-  output.
+- **No secrets in the repo.** Model keys come only from the macOS Keychain (`openrouter-api-key`,
+  the default provider, or `anthropic-api-key`), read inside the provider when a live run starts.
+  The audit scripts also read them, only to compare against files. If a read fails, stop and tell
+  me; never look for a key anywhere else (no env vars, no files, no ~/.zshenv). Never print,
+  log or write a key, including evidence, traces, fixtures, exception messages and test output.
 - **Never push without asking me first.** Commit locally after every step that works.
   Don't email anyone.
 - **Nothing outside the allowlist.** The agent and replay engine act only on allowlisted

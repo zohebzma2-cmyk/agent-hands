@@ -28,9 +28,9 @@ uv run playwright install chromium
 
 ## Model key (only for a live discovery run)
 
-The key lives in the macOS Keychain. It is read once, inside the provider, when a live run starts.
-It is never read from env vars or files, never logged, and only sent to the provider's hard-coded
-base URL.
+The key lives in the macOS Keychain. The provider reads it when a live run starts, and the audit
+scripts read it only to check it never appears in a file. It is never read from env vars or files,
+never printed or logged, and only sent to the provider's hard-coded base URL.
 
 ```sh
 # default: Claude Opus 5.5 through OpenRouter, pinned to Anthropic as the only upstream
@@ -48,7 +48,7 @@ zero data retention.
 Nothing below needs a key or the network.
 
 ```sh
-uv run pytest                 # 209 tests; discovery is driven by a clearly labelled scripted fake model
+uv run pytest                 # discovery is driven by a clearly labelled scripted fake model
 uv run hands target           # the stand-in app at http://127.0.0.1:8341/core/login.do (teller01 / synthetic-teller-pass)
 uv run hands show artifacts/cu_core.open_sub_account@1.0.0.json   # the discovered artifact, as a review page
 ```
@@ -62,11 +62,13 @@ pass `--target-url`.
 P=(-p member_id=900001 -p account_type=Savings -p "nickname=Rainy day" -p initial_deposit=25.00)
 A=artifacts/cu_core.open_sub_account@1.0.0.json
 
-# 1. Discovery with the real model. A browser opens. Type "approve" when the irreversible
-#    step comes up. Writes evidence and a draft artifact.
+# 1. Discovery with the real model. A browser opens. You'll be asked to approve the irreversible
+#    step twice: once when the model reaches it, once in the validation replay that follows.
+#    Keep keyboard focus in the terminal. Writes evidence, a draft and (if validation passes) the
+#    artifact. It refuses to overwrite an existing artifact version with different content.
 uv run hands discover --spec specs/open_sub_account.json "${P[@]}" --headed --out runs
 
-# 2. Validate the draft with no model and promote it. Type "approve" once.
+# 2. Only if validation in step 1 didn't pass: validate the draft again, no model. Type "approve" once.
 uv run hands validate runs/<run-id>/compiled_draft.json "${P[@]}"
 
 # 3. Replay. --approve s13 is your explicit approval of the commit for this one run.
@@ -96,7 +98,7 @@ go through a control API on a separate port that no allowlist includes.
 
 ## Live human handoff
 
-This records a real handoff into `evidence/handoff/handoff-human-live`.
+This records a real handoff into `evidence/handoff/handoff-human-live` (the one there now is mine).
 
 ```sh
 uv run hands replay artifacts/cu_core.open_sub_account@1.0.0.json \

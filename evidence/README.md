@@ -1,9 +1,9 @@
 # Evidence
 
 Everything here came from real runs on 2026-10-17 against the local stand-in app (`cu_sim`). All
-member data is synthetic. Every file passed `scripts/audit_evidence.py`: no API key, no `sk-or-` or
-`sk-ant-` key shapes, no `/Users/` paths, no member names, numbers, balances, addresses or
-credentials, and the supervisor PIN never appears.
+member data is synthetic. `scripts/audit_evidence.py` checks every file for the API key and key
+shapes, and every data file for `/Users/` paths, member names, numbers, balances, addresses,
+credentials and the supervisor PIN. It reports clean.
 
 Each run folder has `result.json` (the replay result contract), `run.jsonl` (the structured log) and,
 where a screen mattered, masked screenshots in `screens/`. Folders below have their own index.
@@ -40,18 +40,16 @@ where a screen mattered, masked screenshots in `screens/`. Folders below have th
 
 | Run | Result | What it shows |
 |---|---|---|
-| `handoff/handoff-supervisor-override-automated` | `needs_human approval_required` at s13 | **Simulated.** A scripted operator, labelled as such, cleared the supervisor dialog on the live page. Verified, resumed at s07. It has no approval authority, so the run stopped at the commit gate. |
-| `handoff/handoff-supervisor-override` | `failed operator_aborted` at s07 | Timeout path: I took control and never resumed within 15 minutes. Nothing committed. |
-| `handoff/handoff-supervisor-override-2` | `failed operator_aborted` at s07 | Timeout path: nobody took control within 15 minutes. Nothing committed. |
-
-There is no real human handoff yet. `README.md` at the repo root has the one command to record one.
+| `handoff/handoff-human-live` | `succeeded`, committed | **The real handoff.** I took control at s07, entered the supervisor PIN in the live browser and resumed. 4 actions captured, PIN masked, check on return passed, automation finished s07 to s14. |
+| `handoff/handoff-supervisor-override-automated` | `failed unexpected_state` at s07 | **Simulated** test version. An operator with no approval authority takes over, and its irreversible supervisor override is blocked at the network. Nothing committed. |
+| `handoff/handoff-supervisor-override` | `failed operator_aborted` at s07 | Timeout path: control taken, never resumed within 15 minutes. Nothing committed. |
 
 ## Second tenant
 
 | Run | Result | What it shows |
 |---|---|---|
 | `tenants/lakeside-base-artifact-no-override` | `failed checkpoint_failed` at s05 | The tenant A artifact on tenant B. Drift at s04 (label missing, CSS fallback used), then the first screen with different wording fails its checkpoint. |
-| `tenants/lakeside-with-tenant-override` | `needs_human approval_required` at s13 | Same artifact plus lakeside's overlay: 12 steps, zero drift, stopped at the commit gate because I didn't approve a commit here. |
+| `tenants/lakeside-with-tenant-override` | `needs_human approval_required` at s13 | Same artifact plus lakeside's overlay: past the drifted s04 and the failing s05, 12 steps, zero drift. Stopped at the commit gate because I ran it without approval. |
 
 ## Provider
 

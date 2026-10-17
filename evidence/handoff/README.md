@@ -1,35 +1,36 @@
 # Handoff
 
-The fault `unknown_dialog` puts a "Supervisor Override Required" box over the member page. The
-replay has no handler for it, so at s07 it raises an intervention and hands the live session to an
-operator.
+The fault `unknown_dialog` puts a "Supervisor Override Required" box over the member page. Replay
+has no handler for it, so at s07 it raises an intervention and hands the live session to an operator.
 
-## handoff-supervisor-override-automated (simulated)
+## handoff-human-live (the real one)
 
-This one is **simulated**. A scripted operator acted on the same live Playwright page instead of a
-person. It is
-labelled as an automated operator in `taken_by`, the lease log and `invocation.json`. It has no
-approval authority.
+I ran this myself in my terminal with a headed browser.
 
-What the files show:
+- Replay stopped at s07 and raised `INT-handoff-human-live-1`.
+- I typed `take` (22:59:03 UTC). The lease went automation → awaiting_human → human (`zoheb`).
+- In the browser I entered the supervisor PIN and clicked Approve Override. 4 actions were captured:
+  a click on the PIN field, the PIN change (recorded as `[MASKED]`), the click on Approve Override,
+  the form submit. The PIN appears nowhere in the evidence.
+- I typed `resume` (22:59:20). The check on return passed: "step s07 target reachable and step s06
+  still holds".
+- Automation resumed at s07 and finished s07 to s14. Result `succeeded`, `commit_state: committed`.
+  The commit was approved by my `--approve s13` on the command line.
 
-- The lease went automation → awaiting_human → operator → verifying → automation.
-- The operator's 3 actions were captured: PIN entry (recorded as `[MASKED]`), the click, the submit.
-  The PIN does not appear anywhere in the evidence.
-- The check on return passed: "step s07 target reachable and step s06 still holds".
-- Automation resumed at s07 and ran s07 to s12.
-- It stopped at s13 with `needs_human approval_required`, because nobody with approval authority was
-  present. Nothing was committed.
+## handoff-supervisor-override-automated (simulated, the test version)
 
-## handoff-supervisor-override and handoff-supervisor-override-2 (timeout path)
+This one is **simulated**: a scripted operator, labelled as such in `taken_by`, the
+lease log and `invocation.json`. It has no approval authority.
 
-These were meant to be my real handoff. I never got to the browser.
+It shows separation of duties. The operator takes over and tries the supervisor override. The
+override is itself an irreversible, human-only action in the profile, so the commit guard blocks it
+at the network (`network_blocked`, `/core/override.do` in `run.jsonl`). The dialog stays, the check on
+return fails twice, and the run ends `failed unexpected_state`. Nothing is committed.
 
-- `handoff-supervisor-override`: I typed `take`, then didn't resume within 15 minutes. The lease went
-  human → aborted. Result `failed operator_aborted`, nothing committed.
-- `handoff-supervisor-override-2`: nobody took control within 15 minutes. The lease went
-  awaiting_human → aborted. Same result.
+An earlier version of this run let that override through. The final review caught it and the fix is
+in commit c4c64bb; this folder was re-recorded after the fix.
 
-I kept both because the lease paths differ.
+## handoff-supervisor-override (timeout path)
 
-There is no real human handoff here yet. The root README has the command to record one.
+My first attempt. I typed `take` and didn't get to the browser. After 15 minutes the lease went
+human → aborted and the run ended `failed operator_aborted`. Nothing was committed.
