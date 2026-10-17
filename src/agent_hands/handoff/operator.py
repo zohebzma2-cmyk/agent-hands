@@ -159,7 +159,9 @@ class HandoffContext(Protocol):
 
 class Operator(Protocol):
     name: str
-    can_approve: bool  # may this operator approve irreversible steps? (taking over is separate)
+    # May this operator approve irreversible steps, and commit during a handoff? Taking over the
+    # session is separate. The engine treats a missing attribute as False.
+    can_approve: bool
 
     def approve(self, req: ApprovalRequest) -> ApprovalDecision: ...
     def handle(self, req: InterventionRequest, ctx: HandoffContext) -> HandoffOutcome: ...

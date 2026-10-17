@@ -48,13 +48,12 @@ def lakeside():
     s.stop()
 
 
-def run(sim, artifact, labels=None, approvals=()):
+def run(sim, artifact, approvals=()):
     sim.state.reset()
     session = BrowserSession(policy=Policy(allowlist_for(sim.url)))
     session.start()
     try:
-        cfg = ReplayConfig(run_id="tenant", origin=sim.url, allow_draft=True, param_labels=labels or {},
-                           approvals=list(approvals))
+        cfg = ReplayConfig(run_id="tenant", origin=sim.url, allow_draft=True, approvals=list(approvals))
         return ReplayEngine(artifact, load_profile("cu_core"), session, cfg).run(PARAMS)
     finally:
         session.close()
@@ -77,8 +76,29 @@ def test_base_artifact_on_tenant_b_drifts_then_fails_at_the_first_wrong_screen(l
 def test_with_the_tenant_overlay_it_runs_clean(lakeside):
     ov = overlay_for(LAKESIDE, BASE.capability.id)
     derived = apply_overlay(BASE, ov)
-    gated = run(lakeside, derived, ov.param_labels)
+    gated = run(lakeside, derived)
     assert isinstance(gated, NeedsHuman) and gated.step_id == "s13" and gated.drift == []
-    ok = run(lakeside, derived, ov.param_labels, [approve(derived, "s13", PARAMS, "pytest", run_id="tenant")])
+    ok = run(lakeside, derived, [approve(derived, "s13", PARAMS, "pytest", run_id="tenant")])
     assert isinstance(ok, Succeeded) and ok.drift == []
     assert lakeside.state.snapshot()["subaccounts"][0]["product"] == "Share Account"
+
+
+
+def test_display_labels_are_covered_by_the_hash_and_the_approval(lakeside):
+    ov = overlay_for(LAKESIDE, BASE.capability.id)
+    derived = apply_overlay(BASE, ov)
+    assert derived.display_labels == {"account_type": {"Savings": "Share Account"}}
+    tampered = apply_overlay(BASE, ov.model_copy(update={"param_labels": {"account_type": {"Savings": "Certificate"}}}))
+    assert tampered.content_hash() != derived.content_hash()
+    # an approval for the reviewed labels doesn't authorise the tampered ones
+    r = run(lakeside, tampered, [approve(derived, "s13", PARAMS, "pytest", run_id="tenant")])
+    assert isinstance(r, NeedsHuman) and r.reason == "approval_required"
+    assert lakeside.state.snapshot()["subaccounts"] == []
+
+
+def test_adding_display_labels_did_not_change_existing_artifact_hashes():
+    promoted = CapabilityArtifact.model_validate_json(
+        (ROOT / "artifacts/cu_core.open_sub_account@1.0.0.json").read_text())
+    assert promoted.display_labels is None
+    # the hash every committed evidence run recorded
+    assert promoted.content_hash() == "sha256:2ccdf82ba1b52b90f08d33ad394dce8394fd3136b7ddeb46a1278dbf16681d5a"

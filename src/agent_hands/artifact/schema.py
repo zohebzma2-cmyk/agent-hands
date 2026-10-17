@@ -479,6 +479,9 @@ class CapabilityArtifact(Model):
     steps: list[Step] = Field(min_length=1)
     success: Checkpoint
     provenance: Provenance
+    # How param values are shown on this artifact's screens (set by a tenant overlay). Part of the
+    # content hash, so an approval covers exactly what will be selected on screen.
+    display_labels: dict[str, dict[str, str]] | None = None
 
     # -- integrity -----------------------------------------------------------
 

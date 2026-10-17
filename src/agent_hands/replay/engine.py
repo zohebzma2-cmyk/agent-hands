@@ -133,7 +133,6 @@ class ReplayConfig:
     approvals: list[Approval] = field(default_factory=list)
     allow_draft: bool = False  # only the post-compile validation replay runs drafts
     secret_overrides: dict[str, str] = field(default_factory=dict)  # secret name → ref (tenant config)
-    param_labels: dict[str, dict[str, str]] = field(default_factory=dict)  # tenant display labels (overlay)
     nav_timeout_ms: int = 15_000  # entry navigation and frame reloads
     dismiss_timeout_ms: int = 3_000  # clicking a known interstitial's dismiss control
 
@@ -185,8 +184,10 @@ class ReplayEngine:
             assert session.context is not None
             self.capture.install(session.context)
         # Network backstop for the approval gate: an irreversible POST goes out only when armed.
+        # A person holding the lease may commit only if their operator channel has approval authority;
+        # an operator without it is blocked at the network like automation is.
         self.guard = CommitGuard(lambda path: post_is_irreversible(profile, path),
-                                 lambda: self.lease.owner == Owner.HUMAN)
+                                 lambda: self.lease.owner == Owner.HUMAN and self._operator_can_approve())
         if session.context is not None:
             self.guard.install(session.context)
         self.guard_seen = 0
@@ -221,13 +222,17 @@ class ReplayEngine:
             try:
                 self.params = self.a.bind_params(raw_params)
                 # what the page shows for each param on this tenant; binding/approval/redaction keep the real values
-                self.ui_params = {k: self.cfg.param_labels.get(k, {}).get(str(v), v) for k, v in self.params.items()}
+                labels = self.a.display_labels or {}
+                self.ui_params = {k: labels.get(k, {}).get(str(v), v) for k, v in self.params.items()}
             except ParamError as e:
                 raise _Stop("failed", failure=Failure(
                     kind=FailureKind.PARAM_INVALID, step_id=None,
                     expected="params matching the capability contract", observed=str(e)))
             self.secrets = {s.name: self.resolve_secret(self.cfg.secret_overrides.get(s.name, s.ref)) for s in self.a.secrets}
             self.redactor = Redactor.from_contract(self.a, params=self.params, secrets=self.secrets, patterns=self.patterns)
+            for spec in self.a.params:  # what the screen shows for a sensitive param is sensitive too
+                if self.ui_params.get(spec.name) != self.params.get(spec.name):
+                    self.redactor.add(spec.name, self.ui_params[spec.name], spec.sensitivity)
             self.log.redactor = self.redactor
             self.capture.redactor = self.redactor
             self._execute()
@@ -341,6 +346,13 @@ class ReplayEngine:
                     raise _Stop("failed", failure=Failure(
                         kind=FailureKind.UNEXPECTED_STATE, step_id=step.id, intent=step.intent,
                         expected="each irreversible step runs at most once", observed="the step was about to run again"))
+                action_path = handle.evaluate(
+                    "e => { const f = e.form || (e.closest && e.closest('form'));"
+                    " return f ? new URL(f.getAttribute('action') || location.href, location.href).pathname : null; }")
+                if action_path and action_path in self._operator_submits():
+                    self.commits[step.id] = "in_doubt"  # an operator already submitted this kind of commit
+                    raise _Stop("needs_human", reason="commit_state_unknown", step_id=step.id,
+                                detail=f"an operator already submitted to {action_path} during a handoff")
                 self.log.screenshot(self.page, f"{step.id}-before-commit", self._masks())
                 self.commits[step.id] = "in_doubt"
                 self.guard.arm()
@@ -363,6 +375,8 @@ class ReplayEngine:
         self._record(step, "completed_by_human" if verdict == "completed" else "ok", resolution, t)
 
     def _record(self, step: Step, status: str, resolution: Resolution | None, t: float) -> None:
+        if status == "completed_by_human" and step.risk == Risk.IRREVERSIBLE:
+            self.commits[step.id] = "committed"  # the human did the commit; its checkpoint was verified
         rec = StepRecord(step_id=step.id, intent=step.intent, status=status, resolution=resolution,  # type: ignore[arg-type]
                          duration_ms=int((time.monotonic() - t) * 1000))
         self.records.append(rec)
@@ -613,6 +627,13 @@ class ReplayEngine:
             r.handle.click(timeout=self.cfg.dismiss_timeout_ms)
             self._recover(step, cond.id, "dismissed", n + 1)
 
+    def _operator_can_approve(self) -> bool:
+        return self.operator is not None and bool(getattr(self.operator, "can_approve", False))
+
+    def _operator_submits(self) -> list[str]:
+        """Irreversible submits an operator made during a handoff (passed by the guard as human:<path>)."""
+        return [p.removeprefix("human:") for p in self.guard.passed if p.startswith("human:")]
+
     def _anchor_for(self, i: int) -> int | None:
         """Where it's safe to resume step i from: its own anchor, else the previous step's (a commit
         step has none; its form starts at the previous step's anchor). Never at or before a commit."""
@@ -694,7 +715,7 @@ class ReplayEngine:
                 return self._approved(step, "approved", ap.approver, ap.approved_at, "caller_token", ph)
         # Separation of duties: an operator that may take over the session isn't necessarily allowed to
         # approve commits (an automated stand-in never is). No approver means unattended semantics.
-        if self.operator is None or not getattr(self.operator, "can_approve", True):
+        if not self._operator_can_approve():
             self.log.event("approval_required", step_id=step.id)
             raise _Stop("needs_human", reason="approval_required", step_id=step.id,
                         detail=f"irreversible step '{step.intent}' needs an explicit approval bound to this artifact and params")
@@ -729,7 +750,8 @@ class ReplayEngine:
                 continue
             if spec.sensitivity.value == "pii" and isinstance(v, str):
                 v = "•" * max(0, len(v) - 2) + v[-2:]
-            shown.append(f"{spec.name}={v}")
+            ui = self.ui_params.get(spec.name)
+            shown.append(f"{spec.name}={v}" + (f' (shown as "{ui}")' if ui != self.params.get(spec.name) else ""))
         return f"{self.a.capability.title}: " + ", ".join(shown)
 
     # ---------------------------------------------------------- escalation
@@ -846,7 +868,8 @@ class ReplayEngine:
             duration_ms=int((time.monotonic() - t0) * 1000),
             params={k: self.redactor.scrub(str(v)) for k, v in self.params.items()},
             steps=self.records, recoveries=self.recoveries, handoffs=self.handoffs, approvals=self.approvals,
-            commit_state=self._commit_state(), evidence_dir=str(self.run_dir) if self.run_dir else None,
+            commit_state=self._commit_state(), operator_submits=self._operator_submits(),
+            evidence_dir=str(self.run_dir) if self.run_dir else None,
         )
         if "failure" in data:
             f: Failure = data["failure"]
@@ -872,6 +895,11 @@ class ReplayEngine:
             result = Failed(**common, **data)
         for d in self.session.policy.blocked:
             self.log.event("network_blocked", by="allowlist", rule=d.rule, detail=d.detail)
+        for path in self.guard.blocked[self.guard_seen:]:  # blocks the step loop didn't get to log
+            self.log.event("network_blocked", by="commit_guard", method="POST", path=path)
+        for p in self.guard.passed:
+            by, _, path = p.rpartition(":") if p.startswith("human:") else ("automation", "", p)
+            self.log.event("commit_guard_passed", by="operator" if by == "human" else by, path=path)
         self.log.event("replay_end", status=result.status)
         self.log.write_json("result.json", result.persisted(self.a, self.redactor), already_redacted=True)
         if self.lease.log:

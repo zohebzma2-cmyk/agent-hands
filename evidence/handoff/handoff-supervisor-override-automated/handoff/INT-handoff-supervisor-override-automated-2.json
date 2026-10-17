@@ -1,0 +1,14 @@
+{
+  "id": "INT-handoff-supervisor-override-automated-2",
+  "run_id": "handoff-supervisor-override-automated",
+  "capability": "cu_core.open_sub_account@1.0.0",
+  "step_id": "s07",
+  "step_intent": "Read the Base Share balance",
+  "reason": "unexpected_state",
+  "detail": "after handoff: neither step s07 checkpoint nor a reachable target",
+  "ask": "Clear what is covering 'cell next to \"Base Share\", column Balance' so the page is ready for: Read the Base Share balance. Don't do the step itself.",
+  "resume_check": "element present: cell next to \"Base Share\", column Balance (within 5000 ms) (or the target of s07 is reachable)",
+  "screenshot": "screens/017-INT-handoff-supervisor-override-automated-2-before.png",
+  "page_summary": "[top /core/frameset.do]  | [banner /core/banner.do] Ridgeline Example Credit Union (SYNTHETIC) \u2592 \u2592 | [nav /core/nav.do] Functions Member Search Teller Drawer Reports Sign Off | [main /] ",
+  "requested_at": "2026-10-17T23:05:31.019+00:00"
+}

@@ -176,6 +176,8 @@ class _Base(Model):
     approvals: list[ApprovalRecord] = []
     # none: nothing irreversible was submitted; in_doubt: submitted, outcome unknown; committed: confirmed
     commit_state: Literal["none", "in_doubt", "committed"] = "none"
+    # irreversible submits an operator made during a handoff (paths), so a caller can see them
+    operator_submits: list[str] = []
     evidence_dir: str | None = None
 
     _strip = _drop_computed("drift", "retryable")

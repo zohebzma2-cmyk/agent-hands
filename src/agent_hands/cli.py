@@ -35,6 +35,24 @@ def _stamp() -> str:
     return time.strftime("%Y%m%dT%H%M%S", time.gmtime())
 
 
+def _save_artifact(artifact: CapabilityArtifact, directory: str) -> Path | None:
+    """Write artifacts/<id>@<version>.json, refusing to replace a different artifact under the same
+    version (a changed artifact needs a version bump; see artifact.schema.required_bump)."""
+    dest = Path(directory) / f"{artifact.ref}.json"
+    if dest.exists():
+        existing = CapabilityArtifact.model_validate_json(dest.read_text())
+        if existing.content_hash() != artifact.content_hash():
+            from agent_hands.artifact.schema import required_bump
+
+            print(f"refusing to overwrite {dest}: different content under the same version "
+                  f"(needs a {required_bump(existing, artifact)} bump)", file=sys.stderr)
+            return None
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(artifact.canonical_json())
+    dest.with_suffix(".md").write_text(render(artifact))
+    return dest
+
+
 def _params(pairs: list[str]) -> dict[str, str]:
     out = {}
     for p in pairs or []:
@@ -168,11 +186,9 @@ def cmd_discover(args: argparse.Namespace) -> int:
         print(f"artifact: {res.artifact.ref} status={res.artifact.capability.status.value} "
               f"validation={getattr(res.validation, 'status', None)}")
         if res.artifact.capability.status.value == "validated":
-            dest = Path(args.artifacts) / f"{res.artifact.ref}.json"
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_text(res.artifact.canonical_json())
-            dest.with_suffix(".md").write_text(render(res.artifact))
-            print(f"saved {dest}")
+            dest = _save_artifact(res.artifact, args.artifacts)
+            if dest is not None:
+                print(f"saved {dest}")
     if res.error:
         print(f"error: {res.error}", file=sys.stderr)
     return 0 if res.error is None else 1
@@ -185,14 +201,12 @@ def _run_replay(artifact: CapabilityArtifact, args: argparse.Namespace, target: 
 
     tenant = _tenant(args.tenant)
     params = _params(args.param)
-    labels: dict[str, dict[str, str]] = {}
     if not getattr(args, "no_override", False):
         from agent_hands.artifact.overlay import apply_overlay, overlay_for
 
         ov = overlay_for(tenant, artifact.capability.id)
         if ov is not None:
             artifact = apply_overlay(artifact, ov)
-            labels = ov.param_labels
     try:
         approvals = [approve(artifact, sid, params, getpass.getuser(), run_id=run_id) for sid in args.approve or []]
     except ParamError:
@@ -201,7 +215,7 @@ def _run_replay(artifact: CapabilityArtifact, args: argparse.Namespace, target: 
     session.start()
     try:
         cfg = ReplayConfig(run_id=run_id, origin=target.url, approvals=approvals, allow_draft=allow_draft,
-                           secret_overrides=tenant.get("secrets", {}), param_labels=labels)
+                           secret_overrides=tenant.get("secrets", {}))
         engine = ReplayEngine(artifact, load_profile(artifact.app.profile), session, cfg, operator=operator,
                               run_dir=run_dir)
         return engine.run(params), engine
@@ -219,6 +233,9 @@ def cmd_replay(args: argparse.Namespace) -> int:
     if artifact.capability.status.value == "draft" and not args.allow_draft:
         print("refusing: this artifact is a draft (pass --allow-draft for pre-promotion evidence runs)",
               file=sys.stderr)
+        return 1
+    if args.allow_draft and (args.approve or args.operator != "none"):
+        print("refusing: a draft can't be approved through replay; use 'hands validate'", file=sys.stderr)
         return 1
     target = Target(args)
     run_id = args.run_id or f"rp-{_stamp()}"
@@ -318,6 +335,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
     target = Target(args)
     try:
         args.approve = []  # promotion needs a human at the prompt, never a pre-approval
+        args.no_override = True  # validate and promote the same artifact: never a tenant-derived one
         result, engine = _run_replay(draft, args, target, run_id, run_dir / f"validation_{run_id}",
                                      TerminalOperator(), allow_draft=True)
     finally:
@@ -335,10 +353,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
         print(f"refusing to save: artifact would carry {len(leaks)} sensitive value(s)", file=sys.stderr)
         return 1
     RunLog(run_dir, engine.redactor, backend="replay").write_raw("artifact.json", artifact.canonical_json())
-    dest = Path(args.artifacts) / f"{artifact.ref}.json"
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(artifact.canonical_json())
-    dest.with_suffix(".md").write_text(render(artifact))
+    dest = _save_artifact(artifact, args.artifacts)
+    if dest is None:
+        return 1
     print(f"promoted to validated; saved {dest} and {run_dir / 'artifact.json'}")
     return 0
 

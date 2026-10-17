@@ -73,10 +73,13 @@ class OpenRouterProvider:
                 raise ProviderUnavailable(f"{var} is set; refusing to send the Keychain key anywhere but {BASE_URL}")
         # auth_token= is an explicit credential: the SDK then reads no credential env vars or profiles,
         # so an ANTHROPIC_API_KEY lying around is never sent to OpenRouter.
+        # trust_env=False: no HTTPS_PROXY / ALL_PROXY / SSL_CERT_FILE from the environment can route the
+        # key through a proxy or swap the CA it's verified against.
+        http = http_client or anthropic.DefaultHttpxClient(trust_env=False)
         self._client = anthropic.Anthropic(
-            auth_token=key, base_url=BASE_URL, max_retries=max_retries, timeout=300.0, http_client=http_client
+            auth_token=key, base_url=BASE_URL, max_retries=max_retries, timeout=300.0, http_client=http
         )
-        self._http = http_client or httpx2.Client(timeout=30.0)
+        self._http = http_client or httpx2.Client(timeout=30.0, trust_env=False)
         self._bearer = {"Authorization": f"Bearer {key}"}
         del key
         self.system = ""

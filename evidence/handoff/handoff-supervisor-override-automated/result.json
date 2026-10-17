@@ -2,8 +2,8 @@
   "run_id": "handoff-supervisor-override-automated",
   "capability": "cu_core.open_sub_account@1.0.0",
   "artifact_hash": "sha256:2ccdf82ba1b52b90f08d33ad394dce8394fd3136b7ddeb46a1278dbf16681d5a",
-  "started_at": "2026-10-17T22:34:37.149+00:00",
-  "duration_ms": 1451,
+  "started_at": "2026-10-17T23:05:29.808+00:00",
+  "duration_ms": 1748,
   "params": {
     "member_id": "[PII:member_id]",
     "account_type": "Savings",
@@ -35,7 +35,7 @@
           0
         ]
       },
-      "duration_ms": 60,
+      "duration_ms": 46,
       "attempts": 1
     },
     {
@@ -62,7 +62,7 @@
           0
         ]
       },
-      "duration_ms": 27,
+      "duration_ms": 26,
       "attempts": 1
     },
     {
@@ -89,7 +89,7 @@
           0
         ]
       },
-      "duration_ms": 74,
+      "duration_ms": 73,
       "attempts": 1
     },
     {
@@ -116,7 +116,7 @@
           0
         ]
       },
-      "duration_ms": 24,
+      "duration_ms": 30,
       "attempts": 1
     },
     {
@@ -153,7 +153,7 @@
           0
         ]
       },
-      "duration_ms": 58,
+      "duration_ms": 214,
       "attempts": 1
     },
     {
@@ -180,169 +180,7 @@
           0
         ]
       },
-      "duration_ms": 214,
-      "attempts": 1
-    },
-    {
-      "step_id": "s07",
-      "intent": "Read the Base Share balance",
-      "status": "ok",
-      "resolution": {
-        "description": "cell next to \"Base Share\", column Balance",
-        "used_index": 0,
-        "used_kind": "near_text",
-        "attempts": [
-          {
-            "index": 0,
-            "kind": "near_text",
-            "outcome": "unique"
-          },
-          {
-            "index": 1,
-            "kind": "css",
-            "outcome": "not_tried"
-          }
-        ],
-        "agreed": [
-          0
-        ]
-      },
-      "duration_ms": 16,
-      "attempts": 1
-    },
-    {
-      "step_id": "s08",
-      "intent": "Start opening a new sub-account",
-      "status": "ok",
-      "resolution": {
-        "description": "button \"Open Sub-Account\"",
-        "used_index": 0,
-        "used_kind": "role",
-        "attempts": [
-          {
-            "index": 0,
-            "kind": "role",
-            "outcome": "unique"
-          },
-          {
-            "index": 1,
-            "kind": "css",
-            "outcome": "not_tried"
-          }
-        ],
-        "agreed": [
-          0
-        ]
-      },
-      "duration_ms": 192,
-      "attempts": 1
-    },
-    {
-      "step_id": "s09",
-      "intent": "Choose the account type",
-      "status": "ok",
-      "resolution": {
-        "description": "combobox next to \"Account Type:\"",
-        "used_index": 0,
-        "used_kind": "near_text",
-        "attempts": [
-          {
-            "index": 0,
-            "kind": "near_text",
-            "outcome": "unique"
-          },
-          {
-            "index": 1,
-            "kind": "css",
-            "outcome": "not_tried"
-          }
-        ],
-        "agreed": [
-          0
-        ]
-      },
-      "duration_ms": 20,
-      "attempts": 1
-    },
-    {
-      "step_id": "s10",
-      "intent": "Enter the nickname",
-      "status": "ok",
-      "resolution": {
-        "description": "textbox next to \"Nickname:\"",
-        "used_index": 0,
-        "used_kind": "near_text",
-        "attempts": [
-          {
-            "index": 0,
-            "kind": "near_text",
-            "outcome": "unique"
-          },
-          {
-            "index": 1,
-            "kind": "css",
-            "outcome": "not_tried"
-          }
-        ],
-        "agreed": [
-          0
-        ]
-      },
-      "duration_ms": 15,
-      "attempts": 1
-    },
-    {
-      "step_id": "s11",
-      "intent": "Enter the opening deposit",
-      "status": "ok",
-      "resolution": {
-        "description": "textbox next to \"Opening Deposit:\"",
-        "used_index": 0,
-        "used_kind": "near_text",
-        "attempts": [
-          {
-            "index": 0,
-            "kind": "near_text",
-            "outcome": "unique"
-          },
-          {
-            "index": 1,
-            "kind": "css",
-            "outcome": "not_tried"
-          }
-        ],
-        "agreed": [
-          0
-        ]
-      },
-      "duration_ms": 15,
-      "attempts": 1
-    },
-    {
-      "step_id": "s12",
-      "intent": "Set funding source to Cash",
-      "status": "ok",
-      "resolution": {
-        "description": "combobox next to \"Funding Source:\"",
-        "used_index": 0,
-        "used_kind": "near_text",
-        "attempts": [
-          {
-            "index": 0,
-            "kind": "near_text",
-            "outcome": "unique"
-          },
-          {
-            "index": 1,
-            "kind": "css",
-            "outcome": "not_tried"
-          }
-        ],
-        "agreed": [
-          0
-        ]
-      },
-      "duration_ms": 15,
+      "duration_ms": 46,
       "attempts": 1
     }
   ],
@@ -352,23 +190,44 @@
       "intervention_id": "INT-handoff-supervisor-override-automated-1",
       "step_id": "s07",
       "reason": "unexpected_state",
-      "requested_at": "2026-10-17T22:34:37.719+00:00",
+      "requested_at": "2026-10-17T23:05:30.361+00:00",
       "taken_by": "scripted-operator (simulated; no approval authority)",
-      "taken_at": "2026-10-17T22:34:37.721+00:00",
-      "released_at": "2026-10-17T22:34:38.253+00:00",
+      "taken_at": "2026-10-17T23:05:30.363+00:00",
+      "released_at": "2026-10-17T23:05:30.897+00:00",
       "resolution": "resumed",
       "human_actions": 3,
-      "verified": true,
-      "verification": "step s07 target reachable and step s06 still holds"
+      "verified": false,
+      "verification": "neither step s07 checkpoint nor a reachable target"
+    },
+    {
+      "intervention_id": "INT-handoff-supervisor-override-automated-2",
+      "step_id": "s07",
+      "reason": "unexpected_state",
+      "requested_at": "2026-10-17T23:05:31.019+00:00",
+      "taken_by": "scripted-operator (simulated; no approval authority)",
+      "taken_at": "2026-10-17T23:05:31.022+00:00",
+      "released_at": "2026-10-17T23:05:31.523+00:00",
+      "resolution": "resumed",
+      "human_actions": 0,
+      "verified": false,
+      "verification": "neither step s07 checkpoint nor a reachable target"
     }
   ],
   "approvals": [],
   "commit_state": "none",
+  "operator_submits": [],
   "evidence_dir": "evidence/handoff/handoff-supervisor-override-automated",
-  "status": "needs_human",
-  "reason": "approval_required",
-  "step_id": "s13",
-  "intervention_id": null,
-  "detail": "irreversible step 'Submit to open the {account_type} sub-account' needs an explicit approval bound to this artifact and params",
+  "status": "failed",
+  "failure": {
+    "kind": "unexpected_state",
+    "step_id": "s07",
+    "intent": "Read the Base Share balance",
+    "expected": "after handoff: element present: cell next to \"Base Share\", column Balance (within 5000 ms)",
+    "observed": "[top /core/frameset.do]  | [banner /core/banner.do] Ridgeline Example Credit Union (SYNTHETIC) \u2592 \u2592 | [nav /core/nav.do] Functions Member Search Teller Drawer Reports Sign Off | [main /] ",
+    "screenshot": null,
+    "snapshot": null,
+    "after_commit": false,
+    "retryable": false
+  },
   "drift": []
 }

@@ -201,7 +201,8 @@ class DiscoveryAgent:
         if operator is not None and session.context is not None:
             self.capture.install(session.context)
         self.guard = CommitGuard(lambda path: post_is_irreversible(profile, path),
-                                 lambda: self.lease.owner == Owner.HUMAN)
+                                 lambda: self.lease.owner == Owner.HUMAN
+                                 and bool(getattr(self.operator, "can_approve", False)))
         if session.context is not None:
             self.guard.install(session.context)
         self.trace: list[TraceStep] = []

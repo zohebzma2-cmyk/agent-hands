@@ -62,6 +62,8 @@ class Policy:
     def check_url(self, url: str) -> Decision:
         if url in ALWAYS_OK_URLS or url.startswith("javascript:"):
             return Decision(True, "url", "inert url")
+        if url.startswith("chrome-error://"):  # the page Chromium shows after a request we aborted
+            return Decision(True, "url", "browser error page (the request itself was blocked)")
         if _origin(url) not in self.allowlist.origins:
             return Decision(False, "origin_not_allowlisted", _origin(url))
         path = urlparse(url).path or "/"

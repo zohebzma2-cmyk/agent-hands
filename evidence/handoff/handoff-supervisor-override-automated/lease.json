@@ -1,6 +1,6 @@
 [
   {
-    "at": "2026-10-17T22:34:37.719+00:00",
+    "at": "2026-10-17T23:05:30.361+00:00",
     "frm": "automation",
     "to": "awaiting_human",
     "by": "automation",
@@ -8,7 +8,7 @@
     "epoch": 1
   },
   {
-    "at": "2026-10-17T22:34:37.721+00:00",
+    "at": "2026-10-17T23:05:30.363+00:00",
     "frm": "awaiting_human",
     "to": "human",
     "by": "scripted-operator (simulated; no approval authority)",
@@ -16,7 +16,7 @@
     "epoch": 1
   },
   {
-    "at": "2026-10-17T22:34:38.253+00:00",
+    "at": "2026-10-17T23:05:30.897+00:00",
     "frm": "human",
     "to": "verifying",
     "by": "scripted-operator (simulated; no approval authority)",
@@ -24,11 +24,35 @@
     "epoch": 1
   },
   {
-    "at": "2026-10-17T22:34:38.315+00:00",
+    "at": "2026-10-17T23:05:30.979+00:00",
     "frm": "verifying",
-    "to": "automation",
+    "to": "awaiting_human",
     "by": "automation",
-    "reason": "verified: step s07 target reachable and step s06 still holds",
-    "epoch": 2
+    "reason": "verification failed: neither step s07 checkpoint nor a reachable target",
+    "epoch": 1
+  },
+  {
+    "at": "2026-10-17T23:05:31.021+00:00",
+    "frm": "awaiting_human",
+    "to": "human",
+    "by": "scripted-operator (simulated; no approval authority)",
+    "reason": "operator took control",
+    "epoch": 1
+  },
+  {
+    "at": "2026-10-17T23:05:31.523+00:00",
+    "frm": "human",
+    "to": "verifying",
+    "by": "scripted-operator (simulated; no approval authority)",
+    "reason": "resumed",
+    "epoch": 1
+  },
+  {
+    "at": "2026-10-17T23:05:31.555+00:00",
+    "frm": "verifying",
+    "to": "aborted",
+    "by": "automation",
+    "reason": "verification failed twice",
+    "epoch": 1
   }
 ]

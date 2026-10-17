@@ -599,11 +599,34 @@ def test_without_a_safe_anchor_the_block_is_escalated_under_its_real_name(sim, a
 
 
 
-def test_an_operator_that_cannot_approve_hands_off_but_never_commits(sim, artifact):
-    """Separation of duties: taking over the session doesn't confer authority to approve commits."""
-    op = ScriptedOperator(supervisor)
+def test_an_operator_without_approval_authority_cannot_commit_anything(sim, artifact):
+    """Separation of duties: taking over the session doesn't confer authority to commit. The
+    supervisor override is an irreversible, human-only action, so the guard blocks it."""
+    op = ScriptedOperator(lambda page: supervisor(page) if page.frame(name="main").locator(
+        "input[name=pin]").count() else None)
     op.can_approve = False
-    result, _ = replay(sim, artifact, approved=False, faults={"unknown_dialog": {"mode": "once"}}, operator=op)
-    assert result.handoffs and result.handoffs[0].verified and result.handoffs[0].resolution == "resumed"
-    assert isinstance(result, NeedsHuman) and result.reason == "approval_required" and result.step_id == "s13"
-    assert op.approvals == [] and sim.state.snapshot()["subaccounts"] == []
+    with _Spy() as spy:
+        result, _ = replay(sim, artifact, approved=False, faults={"unknown_dialog": {"mode": "once"}}, operator=op)
+    assert "/core/override.do" in spy.engine.guard.blocked  # the operator's override never left the browser
+    assert op.approvals == [] and not any(h.verified for h in result.handoffs)
+    assert result.status != "succeeded" and result.commit_state == "none"
+    assert sim.state.snapshot()["subaccounts"] == []
+
+
+def test_a_human_commit_during_a_handoff_is_tracked(sim, artifact):
+    """The commit step's target is missing; the human clicks the real button. That commit counts."""
+    data = json.loads(artifact.canonical_json())
+    data["steps"][12]["target"]["strategies"][0]["name"] = {"literal": "Open Acct"}  # primary drifted
+    data["steps"][12]["target"]["strategies"][1] = {"kind": "text", "text": {"literal": "No such"}, "match": "exact"}
+    drifted = CapabilityArtifact.model_validate(data)
+
+    def human(page):
+        page.frame(name="main").locator("input[type=submit]").click()
+        page.frame(name="main").wait_for_load_state()
+
+    result, _ = replay(sim, drifted, operator=ScriptedOperator(human))
+    assert isinstance(result, Succeeded)
+    assert result.commit_state == "committed"
+    assert result.operator_submits == ["/core/subacct.do"]
+    assert next(s for s in result.steps if s.step_id == "s13").status == "completed_by_human"
+    assert len(sim.state.snapshot()["subaccounts"]) == 1

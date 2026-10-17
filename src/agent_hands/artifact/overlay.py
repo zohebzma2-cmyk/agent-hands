@@ -9,8 +9,9 @@ Tenants running the same vendor product differ mostly in vocabulary ("Member #" 
   the value a checkpoint expects). The caller still passes and is billed for the base value.
 
 The derived artifact keeps the base contract (params, outputs, outcomes), so its semver is the base
-version; its content hash differs, and provenance records the base hash and the overlay. Approvals
-bind to the derived hash, i.e. to exactly what runs.
+version. The display labels are written into it (``display_labels``), so its content hash covers
+them; provenance records the base hash and the overlay. Approvals bind to the derived hash, i.e. to
+exactly what runs, labels included.
 """
 
 from __future__ import annotations
@@ -65,6 +66,11 @@ def apply_overlay(base: CapabilityArtifact, overlay: TenantOverlay) -> Capabilit
             o["detect"] = _walk_literals(o["detect"], swap)
             if "message_from" in o:
                 o["message_from"] = _walk_literals(o["message_from"], swap)
+    if overlay.param_labels:
+        unknown = set(overlay.param_labels) - {p["name"] for p in data["params"]}
+        if unknown:
+            raise ValueError(f"overlay labels unknown params {sorted(unknown)}")
+        data["display_labels"] = overlay.param_labels
     data["provenance"]["overlay"] = overlay.tenant
     data["provenance"]["base_hash"] = base.content_hash()
     return CapabilityArtifact.model_validate(data)

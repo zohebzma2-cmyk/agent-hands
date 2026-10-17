@@ -1,9 +1,9 @@
 {
   "run_id": "lakeside-with-tenant-override",
   "capability": "cu_core.open_sub_account@1.0.0",
-  "artifact_hash": "sha256:dfdf5945788e49ba31a35847dad4b16e9cf3104d6efb353e1312e46b2f3d1820",
-  "started_at": "2026-10-17T22:41:18.929+00:00",
-  "duration_ms": 718,
+  "artifact_hash": "sha256:3d9415605a040aba20e3d73fc9e6b8d7b8d6db92527b4b14e4ccbb651ebd5f05",
+  "started_at": "2026-10-17T23:05:06.243+00:00",
+  "duration_ms": 623,
   "params": {
     "member_id": "[PII:member_id]",
     "account_type": "Savings",
@@ -35,7 +35,7 @@
           0
         ]
       },
-      "duration_ms": 28,
+      "duration_ms": 34,
       "attempts": 1
     },
     {
@@ -62,7 +62,7 @@
           0
         ]
       },
-      "duration_ms": 24,
+      "duration_ms": 29,
       "attempts": 1
     },
     {
@@ -89,7 +89,7 @@
           0
         ]
       },
-      "duration_ms": 62,
+      "duration_ms": 70,
       "attempts": 1
     },
     {
@@ -116,7 +116,7 @@
           0
         ]
       },
-      "duration_ms": 25,
+      "duration_ms": 31,
       "attempts": 1
     },
     {
@@ -153,7 +153,7 @@
           0
         ]
       },
-      "duration_ms": 55,
+      "duration_ms": 54,
       "attempts": 1
     },
     {
@@ -180,7 +180,7 @@
           0
         ]
       },
-      "duration_ms": 217,
+      "duration_ms": 214,
       "attempts": 1
     },
     {
@@ -207,7 +207,7 @@
           0
         ]
       },
-      "duration_ms": 21,
+      "duration_ms": 27,
       "attempts": 1
     },
     {
@@ -234,7 +234,7 @@
           0
         ]
       },
-      "duration_ms": 195,
+      "duration_ms": 49,
       "attempts": 1
     },
     {
@@ -261,7 +261,7 @@
           0
         ]
       },
-      "duration_ms": 19,
+      "duration_ms": 25,
       "attempts": 1
     },
     {
@@ -288,7 +288,7 @@
           0
         ]
       },
-      "duration_ms": 16,
+      "duration_ms": 21,
       "attempts": 1
     },
     {
@@ -315,7 +315,7 @@
           0
         ]
       },
-      "duration_ms": 14,
+      "duration_ms": 18,
       "attempts": 1
     },
     {
@@ -342,7 +342,7 @@
           0
         ]
       },
-      "duration_ms": 14,
+      "duration_ms": 19,
       "attempts": 1
     }
   ],
@@ -350,6 +350,7 @@
   "handoffs": [],
   "approvals": [],
   "commit_state": "none",
+  "operator_submits": [],
   "evidence_dir": "evidence/tenants/lakeside-with-tenant-override",
   "status": "needs_human",
   "reason": "approval_required",

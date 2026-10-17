@@ -210,3 +210,14 @@ def test_discovery_through_openrouter_records_provenance_and_never_leaks_the_key
     everything = "".join(p.read_text(errors="ignore") for p in Path(tmp_path).rglob("*") if p.is_file())
     assert FAKE_KEY not in everything and FAKE_KEY not in res.artifact.canonical_json()
     assert FAKE_KEY not in caplog.text
+
+
+
+def test_clients_ignore_proxy_and_ca_environment(monkeypatch):
+    from agent_hands.llm.openrouter_provider import OpenRouterProvider
+
+    monkeypatch.setenv("HTTPS_PROXY", "http://mitm.invalid:8080")
+    monkeypatch.setenv("SSL_CERT_FILE", "/tmp/attacker-ca.pem")
+    p = OpenRouterProvider(key_reader=lambda s: FAKE_KEY)
+    assert p._http.trust_env is False
+    assert p._client._client.trust_env is False

@@ -51,7 +51,9 @@ class AnthropicProvider:
         for var in ("ANTHROPIC_BASE_URL", "ANTHROPIC_CUSTOM_HEADERS"):
             if os.environ.get(var):  # the SDK would honour these and send the key elsewhere
                 raise ProviderUnavailable(f"{var} is set; refusing to send the Keychain key anywhere but the API")
-        self._client = anthropic.Anthropic(api_key=key, base_url=API_BASE_URL, max_retries=2, timeout=300.0)
+        self._client = anthropic.Anthropic(  # trust_env=False: no proxy / CA env vars (see openrouter_provider)
+            api_key=key, base_url=API_BASE_URL, max_retries=2, timeout=300.0,
+            http_client=anthropic.DefaultHttpxClient(trust_env=False))
         del key
         self.system = ""
         self.tools: list[dict[str, Any]] = []

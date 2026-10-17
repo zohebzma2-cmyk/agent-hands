@@ -7,9 +7,10 @@ intervention, the lease moves to the operator, the operator acts on the same liv
 records it, automation verifies the page and resumes.
 
 What differs is who the operator is: a scripted stand-in for a human, labelled as simulated,
-recorded as such (taken_by), never as a person. It has NO approval authority (can_approve=False):
-nothing is pre-approved, so the run continues after the handoff and then stops at the irreversible
-"Open Account" step with needs_human / approval_required. Nothing is committed.
+recorded as such (taken_by), never as a person. It has NO approval authority (can_approve=False).
+The supervisor override it tries is itself an irreversible, human-only action, so the commit guard
+blocks it at the network: the dialog stays, verification fails, nothing is committed. That is the
+point of this run: taking over a session does not confer authority to commit.
 """
 
 import json
@@ -42,9 +43,10 @@ class AutomatedOperator:
         ctx.take(OPERATOR)
         taken = now()
         main = ctx.page.frame(name="main")
-        main.locator("input[name=pin]").fill(cu_sim.app.SUPERVISOR_PIN)  # the synthetic sim PIN
-        main.locator("input[value='Approve Override']").click()
-        main.wait_for_load_state()
+        if main.locator("input[name=pin]").count():  # nothing to do if the dialog is already gone
+            main.locator("input[name=pin]").fill(cu_sim.app.SUPERVISOR_PIN)  # the synthetic sim PIN
+            main.locator("input[value='Approve Override']").click()
+            main.wait_for_load_state()
         ctx.pump(500)
         return HandoffOutcome("resumed", OPERATOR, taken, now(), note="automated stand-in for the human")
 
