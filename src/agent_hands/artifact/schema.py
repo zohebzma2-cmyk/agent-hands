@@ -155,6 +155,7 @@ class NearTextStrategy(Model):
     anchor: Text
     relation: Literal["same_row"] = "same_row"
     role: str
+    column: Text | None = None  # for role "cell": the header text of the column to read
     match: Match = "exact"
 
 
@@ -206,9 +207,13 @@ class TargetSpec(Model):
 # --- checkpoints ------------------------------------------------------------
 
 
+# A frame path, or "any" to look in every frame (vendor-wide pages like errors land anywhere).
+FrameScope = Union[list[FrameRef], Literal["any"]]
+
+
 class TextVisible(Model):
     kind: Literal["text_visible"]
-    frame: list[FrameRef] = []
+    frame: FrameScope = []
     text: Text
     match: Match = "contains"
 
@@ -225,7 +230,7 @@ class ElementAbsent(Model):
 
 class RouteMatches(Model):
     kind: Literal["route_matches"]
-    frame: list[FrameRef] = []
+    frame: FrameScope = []
     pattern: str  # fnmatch-style glob over path + query
 
 

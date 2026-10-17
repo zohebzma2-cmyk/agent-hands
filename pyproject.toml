@@ -1,7 +1,7 @@
 [project]
 name = "agent-hands"
 version = "0.1.0"
-description = "Add your description here"
+description = "Record-once, replay-many computer use for legacy back-office UIs (interface.ai take-home)"
 authors = [
     { name = "Zoheb", email = "zohebzma@gmail.com" }
 ]
@@ -20,3 +20,17 @@ build-backend = "uv_build"
 dev = [
     "pytest>=9.1.1",
 ]
+
+[project.scripts]
+hands = "agent_hands.cli:main"
+
+[tool.uv.build-backend]
+module-name = ["agent_hands", "cu_sim"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "live: needs the real Anthropic API (key from Keychain); skipped by default",
+    "browser: drives Chromium against the local target app",
+]
+addopts = "-m 'not live'"
