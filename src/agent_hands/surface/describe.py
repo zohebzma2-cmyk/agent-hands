@@ -55,6 +55,8 @@ el => {
   } else {
     anchors.sort((a, b) => (a.i < me ? me - a.i : 100 + a.i - me) - (b.i < me ? me - b.i : 100 + b.i - me));
   }
+  const labelLeft = el === cell && me > 0 && cells[me - 1] && !cells[me - 1].querySelector(interactive)
+    && norm(cells[me - 1].textContent) !== '';
   let column = null;
   if (el === cell && tr) {
     const table = tr.closest('table');
@@ -82,7 +84,7 @@ el => {
     const parts = [];
     for (let n = e; n && n.nodeType === 1; n = n.parentElement) {
       const sibs = Array.from(n.parentElement ? n.parentElement.children : []).filter(s => s.tagName === n.tagName);
-      parts.unshift(`${n.tagName.toLowerCase()}[${sibs.indexOf(n) + 1}]`);
+      parts.unshift(`${n.tagName.toLowerCase()}[${Math.max(1, sibs.indexOf(n) + 1)}]`);  // root: [1]
     }
     return '/' + parts.join('/');
   };
@@ -95,7 +97,7 @@ el => {
   const method = form ? (form.getAttribute('method') || 'get').toLowerCase() : null;
   const action = form ? new URL(form.getAttribute('action') || location.href, location.href).pathname : null;
   return {
-    tag, type, own, label, column,
+    tag, type, own, label, column, label_left: labelLeft,
     anchors: anchors.slice(0, 2).map(a => a.text),
     css: cssPath(el), xpath: xpath(el),
     is_post_submit: !!form && method === 'post' && (isSubmit || jsSubmit),
@@ -156,8 +158,8 @@ def describe(
     if role in NEAR_ROLES:
         for anchor in info["anchors"]:
             column = _text(info["column"], params) if role == "cell" and info["column"] else None
-            if role == "cell" and column is None:
-                continue
+            if role == "cell" and column is None and not info.get("label_left"):
+                continue  # a data cell with neither a column header nor a label right before it
             proposed.append(NearTextStrategy(kind="near_text", anchor=_text(anchor, params), role=role, column=column))
     if info["own"] and not reading:
         proposed.append(TextStrategy(kind="text", text=_text(info["own"], params)))

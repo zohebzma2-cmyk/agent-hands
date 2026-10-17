@@ -211,3 +211,33 @@ def test_popups_are_closed(session):
     session.page.wait_for_timeout(300)
     assert len(session.context.pages) == 1
     assert any(d.rule == "popup_blocked" for d in session.policy.blocked)
+
+
+
+def test_describe_reads_a_key_value_cell_by_its_label(session, sim):
+    """A confirmation table with no header row: the value cell is found next to its label."""
+    page = session.page
+    main = page.frame(name="main")
+    main.goto(sim.url + "/core/subacct.do?mid=900001")
+    main.select_option("select[name=f7]", label="Savings")
+    main.fill("input[name=f9]", "25.00")
+    with main.expect_navigation():
+        main.locator("input[type=submit]").click()
+    snap = page.aria_snapshot(mode="ai")
+    ref = next(line.split("[ref=")[1].split("]")[0] for line in snap.splitlines() if 'cell "SA-' in line)
+    handle = page.locator(f"aria-ref={ref}").element_handle()
+    role, name = role_and_name(snap, ref)
+    d = describe(page, handle, role, name, {}, reading=True)
+    first = d.strategies[0]
+    assert isinstance(first, NearTextStrategy) and first.anchor == LiteralValue(literal="Confirmation #")
+    assert first.column is None
+
+
+def test_positional_xpath_validates(session):
+    snap = session.page.aria_snapshot(mode="ai")
+    ref = next(line.split("[ref=")[1].split("]")[0] for line in snap.splitlines() if 'button "Find"' in line)
+    handle = session.page.locator(f"aria-ref={ref}").element_handle()
+    role, name = role_and_name(snap, ref)
+    d = describe(session.page, handle, role, name, {}, reading=False)
+    assert "xpath" in [s.kind for s in d.strategies]
+    assert not any(k == "xpath" for k, _ in d.rejected)

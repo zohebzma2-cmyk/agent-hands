@@ -299,7 +299,7 @@ class DiscoveryAgent:
                 continue
             for line in visible_text(f).splitlines():
                 for raw, masked in zip(line.split("\t"), mask_cells(line).split("\t")):
-                    if masked.strip() == "▒" and len(raw.strip()) >= 3:
+                    if masked.strip() == "▒" and len(raw.strip()) >= 4:  # "S10" must not eat step id s10
                         value = norm(raw)
                         variants = {value, value.lstrip("$ ")}
                         variants |= {part.strip() for part in value.split(",") if len(part.strip()) >= 4}
