@@ -188,6 +188,7 @@ class ReplayEngine:
                                  lambda: self.lease.owner == Owner.HUMAN)
         if session.context is not None:
             self.guard.install(session.context)
+        self.guard_seen = 0
         self.params: dict[str, Any] = {}
         self.secrets: dict[str, str] = {}
         self.outputs: dict[str, Any] = {}
@@ -339,12 +340,13 @@ class ReplayEngine:
                 self.log.screenshot(self.page, f"{step.id}-before-commit", self._masks())
                 self.commits[step.id] = "in_doubt"
                 self.guard.arm()
+            blocked_before = len(self.guard.blocked)
             try:
                 self._act(step, handle)
             finally:
                 if step.risk == Risk.IRREVERSIBLE:
                     self.page.wait_for_timeout(0)  # let the route handler see the POST before disarming
-            if self.guard.blocked:
+            if len(self.guard.blocked) > blocked_before:  # only blocks caused by THIS action
                 raise _Stop("failed", failure=Failure(
                     kind=FailureKind.POLICY_DENIED, step_id=step.id, intent=step.intent,
                     expected="irreversible submits only under an armed approval",
@@ -382,7 +384,8 @@ class ReplayEngine:
                     observed=f"{r.detail}; attempts {[a.outcome for a in r.resolution.attempts]}; "
                              + page_summary(self.page),
                     screenshot=self.log.screenshot(self.page, f"{step.id}-target-missing", self._masks()))
-                verdict = self._escalate(i, step, failure.kind.value, failure.expected,
+                verdict = self._escalate(i, step, failure.kind.value,
+                                         f"{failure.expected}; got {[a.outcome for a in r.resolution.attempts]}",
                                          ask=f"Get the page to where this step can run: {step.intent}. "
                                              "Don't do the step itself.", failure=failure)
                 if verdict == "completed":
@@ -486,6 +489,30 @@ class ReplayEngine:
         return any(condition_holds(self.page, c, self.params, self.secrets) for c in cond_list)
 
     def _check(self, step: Step, phase: str) -> None:
+        if len(self.guard.blocked) > self.guard_seen:
+            # A submit nobody approved was aborted at the network layer: input from outside the engine
+            # (keystrokes or a click in the browser while automation holds it). Nothing was committed:
+            # the request never left the browser. The page is now Chromium's blocked-request page.
+            for path in self.guard.blocked[self.guard_seen:]:
+                self.log.event("network_blocked", by="commit_guard", method="POST", path=path, step_id=step.id)
+            self.guard_seen = len(self.guard.blocked)
+            i = self.a.step_index(step.id)
+            anchor = self._anchor_for(i)
+            if anchor is not None and self.budget_used.get("engine.unapproved_submit", 0) < 1:
+                self.budget_used["engine.unapproved_submit"] = 1
+                self._recover(step, "engine.unapproved_submit_blocked", "restored_from_anchor", 1)
+                self._restore(anchor)  # sign on again, resume at the anchor; raises _Jump
+            verdict = self._escalate(
+                i, step, "unexpected_state",
+                f"blocked an unapproved submit to {self.guard.blocked[-1]} (input from outside automation?)",
+                ask=f"Nothing was committed. Bring the page back to where this step can run: {step.intent}. "
+                    "Don't submit anything.",
+                failure=Failure(kind=FailureKind.POLICY_DENIED, step_id=step.id, intent=step.intent,
+                                expected="no submits except approved ones",
+                                observed=f"commit guard blocked a submit to {self.guard.blocked[-1]}"))
+            if verdict == "completed":
+                raise _Jump(i + 1)
+            raise _Retry
         for cond in self.hard_conditions:
             if self._detected(cond.detect):
                 self._handle(cond, step, phase)
@@ -570,11 +597,7 @@ class ReplayEngine:
                     kind=FailureKind.SESSION_UNRECOVERABLE, step_id=step.id, intent=step.intent,
                     expected="a resume point after every submitted commit", observed="resuming would re-run a commit"))
             self._recover(step, cond.id, "re_login", n + 1)
-            self._goto_entry()
-            for j, s in enumerate(self.a.steps):
-                if s.phase == "login":
-                    self._run_step(j)
-            raise _Jump(self.a.step_index(step.resume_anchor))
+            self._restore(anchor)
         elif cond.handler == "dismiss":
             n = self._spend(cond, step, FailureKind.UNEXPECTED_STATE)
             assert cond.dismiss is not None
@@ -585,6 +608,34 @@ class ReplayEngine:
             self.lease.assert_automation(self.epoch)
             r.handle.click(timeout=self.cfg.dismiss_timeout_ms)
             self._recover(step, cond.id, "dismissed", n + 1)
+
+    def _anchor_for(self, i: int) -> int | None:
+        """Where it's safe to resume step i from: its own anchor, else the previous step's (a commit
+        step has none; its form starts at the previous step's anchor). Never at or before a commit."""
+        for k in (i, i - 1):
+            if k >= 0 and self.a.steps[k].resume_anchor is not None:
+                a = self.a.step_index(self.a.steps[k].resume_anchor)
+                if not any(self.a.step_index(sid) >= a for sid in self.commits):
+                    return a
+        return None
+
+    def _restore(self, anchor: int) -> None:
+        """Get back to a known state: entry page, the login steps, then resume at ``anchor``."""
+        self._goto_entry()
+        for j, s in enumerate(self.a.steps):
+            if s.phase == "login":
+                self._run_step(j)
+        raise _Jump(anchor)
+
+    def _quiet_page(self) -> None:
+        """Before waiting on a human: blur whatever has focus in every frame, so keystrokes that land
+        in the browser window (it can take focus) go nowhere instead of submitting a filled form."""
+        for f in self.page.frames:
+            try:
+                f.evaluate("() => { if (document.activeElement && document.activeElement.blur) "
+                           "document.activeElement.blur(); }")
+            except Exception:
+                pass
 
     def _shows(self, cond: ConditionSpec, frame: Frame) -> bool:
         """Which frame is showing a text condition (to reload that frame, not the whole page)."""
@@ -641,6 +692,7 @@ class ReplayEngine:
             self.log.event("approval_required", step_id=step.id)
             raise _Stop("needs_human", reason="approval_required", step_id=step.id,
                         detail=f"irreversible step '{step.intent}' needs an explicit approval bound to this artifact and params")
+        self._quiet_page()
         decision = self.operator.approve(ApprovalRequest(
             run_id=self.cfg.run_id, step_id=step.id, intent=step.intent, target=step.target.description,
             bound_to=self.hash, summary=self._commit_summary()))  # terminal only; never persisted
@@ -812,6 +864,8 @@ class ReplayEngine:
             result = NeedsHuman(**common, **data)
         else:
             result = Failed(**common, **data)
+        for d in self.session.policy.blocked:
+            self.log.event("network_blocked", by="allowlist", rule=d.rule, detail=d.detail)
         self.log.event("replay_end", status=result.status)
         self.log.write_json("result.json", result.persisted(self.a, self.redactor), already_redacted=True)
         if self.lease.log:

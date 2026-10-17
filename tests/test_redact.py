@@ -119,6 +119,12 @@ def test_account_numbers_keep_last_four_for_debugging():
     assert Redactor().scrub("acct 4401887722019").endswith("2019]")
 
 
+def test_router_generation_ids_survive_redaction():
+    gid = "gen-1792267210-621MUyYWx0wKPp0wF7B2"
+    assert Redactor().scrub(f"id {gid}") == f"id {gid}"
+    assert "4401887722019" not in Redactor().scrub("acct 4401887722019")
+
+
 def test_patterns_can_be_disabled_for_unit_debugging():
     assert Redactor(patterns=()).scrub("ssn 123-45-6789") == "ssn 123-45-6789"
 
@@ -161,3 +167,16 @@ def test_scrub_exception_message():
 )
 def test_mask_value(value, mode, expected):
     assert mask_value(value, mode) == expected
+
+
+def test_run_log_keeps_generation_ids_intact_but_still_redacts_account_numbers(tmp_path):
+    import json as _json
+
+    from agent_hands.evidence import RunLog
+
+    gid = "gen-1792267236-dA4x9pvwq9ve1i5Kq88B"
+    log = RunLog(tmp_path, Redactor(), backend="openrouter")
+    log.event("model_turn", generation_id=gid, request_id=gid, text=f"turn {gid} for acct 4401887722019")
+    rec = _json.loads((tmp_path / "run.jsonl").read_text())
+    assert rec["generation_id"] == gid and rec["request_id"] == gid
+    assert gid in rec["text"] and "4401887722019" not in rec["text"] and "2019]" in rec["text"]

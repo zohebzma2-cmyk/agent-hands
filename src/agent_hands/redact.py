@@ -44,7 +44,9 @@ DEFAULT_PATTERNS: tuple[Pattern, ...] = (
         re.compile(r"(?i)\b(dob|date of birth|birth\s?date)(\W{0,3})\d{1,2}/\d{1,2}/\d{2,4}"),
         r"\1\2[DOB]",
     ),
-    ("account", re.compile(r"\b\d{9,17}\b"), lambda m: f"[ACCT …{m.group()[-4:]}]"),
+    # long digit runs are account numbers, except inside router ids (gen-<unix time>-...), which are
+    # audit identifiers, not data
+    ("account", re.compile(r"(?<!gen-)\b\d{9,17}\b"), lambda m: f"[ACCT …{m.group()[-4:]}]"),
     ("money", re.compile(r"\$\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\$\s?\d+(?:\.\d{2})?"), "[AMOUNT]"),
 )
 

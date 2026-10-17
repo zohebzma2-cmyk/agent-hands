@@ -3,6 +3,7 @@
   hands target                      run the hostile stand-in app (and its fault-control API)
   hands discover --spec ... -p k=v  real LLM discovery run → validated artifact + evidence
   hands replay ARTIFACT -p k=v      deterministic replay, no model
+  hands validate DRAFT -p k=v       re-run a draft's validation replay (no model) and promote it
   hands stability ARTIFACT          replay the happy path N times; pass rate and timing
   hands show ARTIFACT               Markdown review view of an artifact
 """
@@ -178,7 +179,7 @@ def cmd_discover(args: argparse.Namespace) -> int:
 
 
 def _run_replay(artifact: CapabilityArtifact, args: argparse.Namespace, target: Target, run_id: str,
-                run_dir: Path | None, operator: Any = None):
+                run_dir: Path | None, operator: Any = None, allow_draft: bool = False):
     from agent_hands.replay.engine import ReplayConfig, ReplayEngine, approve
     from agent_hands.surface.web import BrowserSession
 
@@ -191,7 +192,7 @@ def _run_replay(artifact: CapabilityArtifact, args: argparse.Namespace, target: 
     session = BrowserSession(policy=Policy(target.allowlist(tenant)), headed=args.headed)
     session.start()
     try:
-        cfg = ReplayConfig(run_id=run_id, origin=target.url, approvals=approvals,
+        cfg = ReplayConfig(run_id=run_id, origin=target.url, approvals=approvals, allow_draft=allow_draft,
                            secret_overrides=tenant.get("secrets", {}))
         engine = ReplayEngine(artifact, load_profile(artifact.app.profile), session, cfg, operator=operator,
                               run_dir=run_dir)
@@ -272,6 +273,54 @@ def cmd_stability(args: argparse.Namespace) -> int:
     return 0 if report["pass_rate"] == 1.0 else 1
 
 
+def cmd_validate(args: argparse.Namespace) -> int:
+    """Re-run the validation replay of a compiled draft (no model) and promote it if it passes."""
+    from agent_hands.agent.pipeline import lint
+    from agent_hands.evidence import RunLog
+    from agent_hands.handoff.operator import TerminalOperator
+    from agent_hands.replay.result import Succeeded
+
+    if not sys.stdin.isatty():
+        print("stopping: validate needs an interactive terminal (a human approves the irreversible step)",
+              file=sys.stderr)
+        return 1
+    draft = CapabilityArtifact.model_validate_json(Path(args.draft).read_text())
+    if draft.capability.status.value != "draft":
+        print(f"{args.draft} is already {draft.capability.status.value}", file=sys.stderr)
+        return 1
+    if draft.provenance.provider == "fake":
+        print("refusing: drafts from the fake backend are never promoted", file=sys.stderr)
+        return 1
+    run_dir = Path(args.draft).parent
+    run_id = args.run_id or f"{draft.provenance.discovered_by_run}-validate-{_stamp()}"
+    target = Target(args)
+    try:
+        args.approve = []  # promotion needs a human at the prompt, never a pre-approval
+        result, engine = _run_replay(draft, args, target, run_id, run_dir / f"validation_{run_id}",
+                                     TerminalOperator(), allow_draft=True)
+    finally:
+        target.stop()
+    print(f"validation replay {run_id}: {result.status}")
+    if not isinstance(result, Succeeded):
+        print(json.dumps(result.persisted(draft, engine.redactor), indent=2))
+        return 1
+    data = json.loads(draft.canonical_json())
+    data["capability"]["status"] = "validated"
+    data["provenance"]["validated_runs"] = [*data["provenance"].get("validated_runs", []), run_id]
+    artifact = CapabilityArtifact.model_validate(data)
+    leaks = lint(artifact, engine.redactor)
+    if leaks:
+        print(f"refusing to save: artifact would carry {len(leaks)} sensitive value(s)", file=sys.stderr)
+        return 1
+    RunLog(run_dir, engine.redactor, backend="replay").write_raw("artifact.json", artifact.canonical_json())
+    dest = Path(args.artifacts) / f"{artifact.ref}.json"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(artifact.canonical_json())
+    dest.with_suffix(".md").write_text(render(artifact))
+    print(f"promoted to validated; saved {dest} and {run_dir / 'artifact.json'}")
+    return 0
+
+
 def cmd_show(args: argparse.Namespace) -> int:
     print(render(CapabilityArtifact.model_validate_json(Path(args.artifact).read_text())))
     return 0
@@ -321,6 +370,14 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--out")
     _target_args(s)
     s.set_defaults(fn=cmd_stability)
+
+    v = sub.add_parser("validate", help="re-run the validation replay of a compiled draft and promote it")
+    v.add_argument("draft", help="e.g. evidence/discovery/<run>/compiled_draft.json")
+    v.add_argument("-p", "--param", action="append", default=[])
+    v.add_argument("--run-id")
+    v.add_argument("--artifacts", default=str(REPO_ROOT / "artifacts"))
+    _target_args(v)
+    v.set_defaults(fn=cmd_validate)
 
     w = sub.add_parser("show", help="Markdown review view of an artifact")
     w.add_argument("artifact")

@@ -1,0 +1,1262 @@
+{
+  "app": {
+    "entry_route": "/core/login.do",
+    "profile": "cu_core",
+    "profile_versions": ">=4.2,<5"
+  },
+  "capability": {
+    "description": "Signs on, finds the member by number, reads the base share balance, opens a new sub-account funded from cash, and returns the confirmation number.",
+    "id": "cu_core.open_sub_account",
+    "risk": "irreversible",
+    "status": "draft",
+    "title": "Open a sub-account for a member",
+    "version": "1.0.0"
+  },
+  "conditions": [
+    "cu_core.server_error@1",
+    "cu_core.session_expired@1",
+    "cu_core.announcement@1"
+  ],
+  "outcomes": [
+    {
+      "at_steps": [
+        "s05",
+        "s06",
+        "s08"
+      ],
+      "code": "member_not_found",
+      "description": "The search returned no member for the given number.",
+      "detect": [
+        {
+          "frame": "any",
+          "kind": "text_visible",
+          "match": "contains",
+          "text": {
+            "literal": "(CL-1404)"
+          }
+        }
+      ],
+      "message_from": {
+        "description": "Red error line",
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "kind": "css",
+            "selector": "font[color='#CC0000'] b"
+          }
+        ]
+      }
+    },
+    {
+      "at_steps": [
+        "s08",
+        "s13"
+      ],
+      "code": "permission_denied",
+      "description": "The signed-on teller is not authorized for this function.",
+      "detect": [
+        {
+          "frame": "any",
+          "kind": "text_visible",
+          "match": "contains",
+          "text": {
+            "literal": "(CL-0403)"
+          }
+        }
+      ],
+      "message_from": {
+        "description": "Red error line",
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "kind": "css",
+            "selector": "font[color='#CC0000'] b"
+          }
+        ]
+      }
+    },
+    {
+      "at_steps": [
+        "s08",
+        "s13"
+      ],
+      "code": "validation_rejected",
+      "description": "The app rejected the submitted values; nothing was committed.",
+      "detect": [
+        {
+          "frame": "any",
+          "kind": "text_visible",
+          "match": "contains",
+          "text": {
+            "literal": "(CL-22"
+          }
+        }
+      ],
+      "message_from": {
+        "description": "Red error line",
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "kind": "css",
+            "selector": "font[color='#CC0000'] b"
+          }
+        ]
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "description": "Base share balance before opening",
+      "name": "share_balance",
+      "redaction": "mask",
+      "sensitivity": "pii",
+      "source_step": "s07",
+      "type": "decimal"
+    },
+    {
+      "description": "Confirmation number of the new sub-account",
+      "name": "confirmation_number",
+      "redaction": "none",
+      "sensitivity": "internal",
+      "source_step": "s14",
+      "type": "string"
+    }
+  ],
+  "params": [
+    {
+      "description": "Six-digit member number",
+      "example": "900004",
+      "identifies_record": true,
+      "name": "member_id",
+      "pattern": "^9\\d{5}$",
+      "required": true,
+      "sensitivity": "pii",
+      "type": "string"
+    },
+    {
+      "description": "Sub-account product",
+      "enum": [
+        "Savings",
+        "Holiday Club",
+        "Certificate"
+      ],
+      "identifies_record": false,
+      "name": "account_type",
+      "required": true,
+      "sensitivity": "internal",
+      "type": "enum"
+    },
+    {
+      "description": "Nickname shown on statements",
+      "example": "Holiday fund",
+      "identifies_record": false,
+      "max_length": 20,
+      "name": "nickname",
+      "pattern": "^[A-Za-z0-9 ]{1,20}$",
+      "required": true,
+      "sensitivity": "internal",
+      "type": "string"
+    },
+    {
+      "description": "Opening deposit in USD, from cash",
+      "example": "40.00",
+      "identifies_record": false,
+      "maximum": "5000.00",
+      "minimum": "5.00",
+      "name": "initial_deposit",
+      "required": true,
+      "sensitivity": "pii",
+      "type": "decimal"
+    }
+  ],
+  "preconditions": [
+    "Teller credentials with sub-account authority"
+  ],
+  "provenance": {
+    "compiler_version": "agent-hands 0.1.0",
+    "created_at": "2026-10-17T20:09:58+00:00",
+    "discovered_by_run": "disc-20261017T200007",
+    "generation_ids": [
+      "gen-1792267210-621MUyYWx0wKPp0wF7B2",
+      "gen-1792267216-E4TPG2JRQKivAw1ALTlB",
+      "gen-1792267220-SG1KinWhMC1ezuJlGBQA",
+      "gen-1792267223-aIqMzVmOBLJqwAhUgYeq",
+      "gen-1792267227-c0XBmFzQhtuG0XGhJH9S",
+      "gen-1792267236-bIJ6GXL7BW8AeqyAGMAC",
+      "gen-1792267778-5OpNi4agXSscIqoFshNL",
+      "gen-1792267781-dA4x9pvwq9ve1i5Kq88B"
+    ],
+    "model": "anthropic/claude-opus-5.5",
+    "models_served": [
+      "anthropic/claude-opus-5.5"
+    ],
+    "provider": "openrouter",
+    "upstream_providers": [
+      "Anthropic"
+    ],
+    "validated_runs": []
+  },
+  "schema_version": "1.0",
+  "secrets": [
+    {
+      "description": "Teller sign-on ID",
+      "name": "teller_username",
+      "ref": "sim:teller_username"
+    },
+    {
+      "description": "Teller sign-on password",
+      "name": "teller_password",
+      "ref": "sim:teller_password"
+    }
+  ],
+  "steps": [
+    {
+      "action": {
+        "kind": "fill",
+        "value": {
+          "secret": "teller_username"
+        }
+      },
+      "expect": {
+        "all_of": [
+          {
+            "kind": "value_equals",
+            "target": {
+              "description": "textbox next to \"User ID:\"",
+              "frame": [],
+              "min_agreement": 1,
+              "strategies": [
+                {
+                  "anchor": {
+                    "literal": "User ID:"
+                  },
+                  "kind": "near_text",
+                  "match": "exact",
+                  "relation": "same_row",
+                  "role": "textbox"
+                },
+                {
+                  "kind": "css",
+                  "selector": "input[name=\"uid\"]"
+                }
+              ]
+            },
+            "value": {
+              "secret": "teller_username"
+            }
+          }
+        ],
+        "any_of": [],
+        "timeout_ms": 5000
+      },
+      "id": "s01",
+      "intent": "Enter teller user ID",
+      "phase": "login",
+      "provenance": {
+        "run_id": "disc-20261017T200007",
+        "trace_index": 0
+      },
+      "risk": "reversible",
+      "target": {
+        "description": "textbox next to \"User ID:\"",
+        "frame": [],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "anchor": {
+              "literal": "User ID:"
+            },
+            "kind": "near_text",
+            "match": "exact",
+            "relation": "same_row",
+            "role": "textbox"
+          },
+          {
+            "kind": "css",
+            "selector": "input[name=\"uid\"]"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "kind": "fill",
+        "value": {
+          "secret": "teller_password"
+        }
+      },
+      "expect": {
+        "all_of": [
+          {
+            "kind": "value_equals",
+            "target": {
+              "description": "textbox next to \"Password:\"",
+              "frame": [],
+              "min_agreement": 1,
+              "strategies": [
+                {
+                  "anchor": {
+                    "literal": "Password:"
+                  },
+                  "kind": "near_text",
+                  "match": "exact",
+                  "relation": "same_row",
+                  "role": "textbox"
+                },
+                {
+                  "kind": "css",
+                  "selector": "input[name=\"pwd\"]"
+                }
+              ]
+            },
+            "value": {
+              "secret": "teller_password"
+            }
+          }
+        ],
+        "any_of": [],
+        "timeout_ms": 5000
+      },
+      "id": "s02",
+      "intent": "Enter teller password",
+      "phase": "login",
+      "provenance": {
+        "run_id": "disc-20261017T200007",
+        "trace_index": 1
+      },
+      "risk": "reversible",
+      "target": {
+        "description": "textbox next to \"Password:\"",
+        "frame": [],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "anchor": {
+              "literal": "Password:"
+            },
+            "kind": "near_text",
+            "match": "exact",
+            "relation": "same_row",
+            "role": "textbox"
+          },
+          {
+            "kind": "css",
+            "selector": "input[name=\"pwd\"]"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "kind": "click"
+      },
+      "expect": {
+        "all_of": [
+          {
+            "frame": [],
+            "kind": "route_matches",
+            "pattern": "/core/frameset.do*"
+          }
+        ],
+        "any_of": [],
+        "timeout_ms": 8000
+      },
+      "id": "s03",
+      "intent": "Sign on",
+      "phase": "login",
+      "provenance": {
+        "run_id": "disc-20261017T200007",
+        "trace_index": 2
+      },
+      "risk": "safe",
+      "target": {
+        "description": "button \"Sign On\"",
+        "frame": [],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "kind": "role",
+            "match": "exact",
+            "name": {
+              "literal": "Sign On"
+            },
+            "role": "button"
+          },
+          {
+            "kind": "css",
+            "selector": "body > font > center > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(3) > td:nth-of-type(2) > input"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "kind": "fill",
+        "value": {
+          "param": "member_id"
+        }
+      },
+      "expect": {
+        "all_of": [
+          {
+            "kind": "value_equals",
+            "target": {
+              "description": "textbox next to \"Member #:\"",
+              "frame": [
+                {
+                  "name": "main"
+                }
+              ],
+              "min_agreement": 1,
+              "strategies": [
+                {
+                  "anchor": {
+                    "literal": "Member #:"
+                  },
+                  "kind": "near_text",
+                  "match": "exact",
+                  "relation": "same_row",
+                  "role": "textbox"
+                },
+                {
+                  "kind": "css",
+                  "selector": "input[name=\"f1\"]"
+                }
+              ]
+            },
+            "value": {
+              "param": "member_id"
+            }
+          }
+        ],
+        "any_of": [],
+        "timeout_ms": 5000
+      },
+      "id": "s04",
+      "intent": "Enter member number",
+      "phase": "task",
+      "provenance": {
+        "run_id": "disc-20261017T200007",
+        "trace_index": 3
+      },
+      "resume_anchor": "s04",
+      "risk": "reversible",
+      "target": {
+        "description": "textbox next to \"Member #:\"",
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "anchor": {
+              "literal": "Member #:"
+            },
+            "kind": "near_text",
+            "match": "exact",
+            "relation": "same_row",
+            "role": "textbox"
+          },
+          {
+            "kind": "css",
+            "selector": "input[name=\"f1\"]"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "kind": "click"
+      },
+      "expect": {
+        "all_of": [
+          {
+            "frame": [
+              {
+                "name": "main"
+              }
+            ],
+            "kind": "text_visible",
+            "match": "contains",
+            "text": {
+              "literal": "Member # Name Branch"
+            }
+          }
+        ],
+        "any_of": [],
+        "timeout_ms": 5000
+      },
+      "id": "s05",
+      "intent": "Search for the member by number",
+      "phase": "task",
+      "provenance": {
+        "run_id": "disc-20261017T200007",
+        "trace_index": 4
+      },
+      "resume_anchor": "s04",
+      "risk": "safe",
+      "target": {
+        "description": "button \"Find\"",
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "kind": "role",
+            "match": "exact",
+            "name": {
+              "literal": "Find"
+            },
+            "role": "button"
+          },
+          {
+            "anchor": {
+              "literal": "Last Name:"
+            },
+            "kind": "near_text",
+            "match": "exact",
+            "relation": "same_row",
+            "role": "button"
+          },
+          {
+            "anchor": {
+              "literal": "Member #:"
+            },
+            "kind": "near_text",
+            "match": "exact",
+            "relation": "same_row",
+            "role": "button"
+          },
+          {
+            "kind": "css",
+            "selector": "body > font > form > table > tbody > tr > td:nth-of-type(5) > input"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "kind": "click"
+      },
+      "expect": {
+        "all_of": [
+          {
+            "frame": [
+              {
+                "name": "main"
+              }
+            ],
+            "kind": "route_matches",
+            "pattern": "/core/member.do*"
+          },
+          {
+            "frame": [
+              {
+                "name": "main"
+              }
+            ],
+            "kind": "text_visible",
+            "match": "contains",
+            "text": {
+              "literal": "Member Detail"
+            }
+          },
+          {
+            "frame": [
+              {
+                "name": "main"
+              }
+            ],
+            "kind": "text_visible",
+            "match": "contains",
+            "text": {
+              "param": "member_id"
+            }
+          }
+        ],
+        "any_of": [],
+        "timeout_ms": 8000
+      },
+      "id": "s06",
+      "intent": "Open the member record",
+      "phase": "task",
+      "provenance": {
+        "run_id": "disc-20261017T200007",
+        "trace_index": 5
+      },
+      "resume_anchor": "s04",
+      "risk": "safe",
+      "target": {
+        "description": "cell \"{member_id}\"",
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "kind": "text",
+            "match": "exact",
+            "text": {
+              "param": "member_id"
+            }
+          },
+          {
+            "kind": "css",
+            "selector": "body > font > table:nth-of-type(2) > tbody > tr:nth-of-type(2) > td:nth-of-type(1)"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "kind": "read",
+        "output": "share_balance"
+      },
+      "expect": {
+        "all_of": [
+          {
+            "kind": "element_present",
+            "target": {
+              "description": "cell next to \"Base Share\", column Balance",
+              "frame": [
+                {
+                  "name": "main"
+                }
+              ],
+              "min_agreement": 1,
+              "strategies": [
+                {
+                  "anchor": {
+                    "literal": "Base Share"
+                  },
+                  "column": {
+                    "literal": "Balance"
+                  },
+                  "kind": "near_text",
+                  "match": "exact",
+                  "relation": "same_row",
+                  "role": "cell"
+                },
+                {
+                  "kind": "css",
+                  "selector": "body > font > table:nth-of-type(3) > tbody > tr:nth-of-type(2) > td:nth-of-type(3)"
+                }
+              ]
+            }
+          }
+        ],
+        "any_of": [],
+        "timeout_ms": 5000
+      },
+      "id": "s07",
+      "intent": "Read the Base Share balance",
+      "phase": "task",
+      "provenance": {
+        "run_id": "disc-20261017T200007",
+        "trace_index": 6
+      },
+      "resume_anchor": "s04",
+      "risk": "safe",
+      "target": {
+        "description": "cell next to \"Base Share\", column Balance",
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "anchor": {
+              "literal": "Base Share"
+            },
+            "column": {
+              "literal": "Balance"
+            },
+            "kind": "near_text",
+            "match": "exact",
+            "relation": "same_row",
+            "role": "cell"
+          },
+          {
+            "kind": "css",
+            "selector": "body > font > table:nth-of-type(3) > tbody > tr:nth-of-type(2) > td:nth-of-type(3)"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "kind": "click"
+      },
+      "expect": {
+        "all_of": [
+          {
+            "frame": [
+              {
+                "name": "main"
+              }
+            ],
+            "kind": "route_matches",
+            "pattern": "/core/subacct.do*"
+          },
+          {
+            "frame": [
+              {
+                "name": "main"
+              }
+            ],
+            "kind": "text_visible",
+            "match": "contains",
+            "text": {
+              "literal": "Open Sub-Account"
+            }
+          },
+          {
+            "frame": [
+              {
+                "name": "main"
+              }
+            ],
+            "kind": "text_visible",
+            "match": "contains",
+            "text": {
+              "param": "member_id"
+            }
+          }
+        ],
+        "any_of": [],
+        "timeout_ms": 8000
+      },
+      "id": "s08",
+      "intent": "Start opening a new sub-account",
+      "phase": "task",
+      "provenance": {
+        "run_id": "disc-20261017T200007",
+        "trace_index": 7
+      },
+      "resume_anchor": "s04",
+      "risk": "safe",
+      "target": {
+        "description": "button \"Open Sub-Account\"",
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "kind": "role",
+            "match": "exact",
+            "name": {
+              "literal": "Open Sub-Account"
+            },
+            "role": "button"
+          },
+          {
+            "kind": "css",
+            "selector": "body > font > input:nth-of-type(1)"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "kind": "select",
+        "value": {
+          "param": "account_type"
+        }
+      },
+      "expect": {
+        "all_of": [
+          {
+            "kind": "value_equals",
+            "target": {
+              "description": "combobox next to \"Account Type:\"",
+              "frame": [
+                {
+                  "name": "main"
+                }
+              ],
+              "min_agreement": 1,
+              "strategies": [
+                {
+                  "anchor": {
+                    "literal": "Account Type:"
+                  },
+                  "kind": "near_text",
+                  "match": "exact",
+                  "relation": "same_row",
+                  "role": "combobox"
+                },
+                {
+                  "kind": "css",
+                  "selector": "select[name=\"f7\"]"
+                }
+              ]
+            },
+            "value": {
+              "param": "account_type"
+            }
+          }
+        ],
+        "any_of": [],
+        "timeout_ms": 5000
+      },
+      "id": "s09",
+      "intent": "Choose the account type",
+      "phase": "task",
+      "provenance": {
+        "run_id": "disc-20261017T200007",
+        "trace_index": 8
+      },
+      "resume_anchor": "s04",
+      "risk": "reversible",
+      "target": {
+        "description": "combobox next to \"Account Type:\"",
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "anchor": {
+              "literal": "Account Type:"
+            },
+            "kind": "near_text",
+            "match": "exact",
+            "relation": "same_row",
+            "role": "combobox"
+          },
+          {
+            "kind": "css",
+            "selector": "select[name=\"f7\"]"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "kind": "fill",
+        "value": {
+          "param": "nickname"
+        }
+      },
+      "expect": {
+        "all_of": [
+          {
+            "kind": "value_equals",
+            "target": {
+              "description": "textbox next to \"Nickname:\"",
+              "frame": [
+                {
+                  "name": "main"
+                }
+              ],
+              "min_agreement": 1,
+              "strategies": [
+                {
+                  "anchor": {
+                    "literal": "Nickname:"
+                  },
+                  "kind": "near_text",
+                  "match": "exact",
+                  "relation": "same_row",
+                  "role": "textbox"
+                },
+                {
+                  "kind": "css",
+                  "selector": "input[name=\"f8\"]"
+                }
+              ]
+            },
+            "value": {
+              "param": "nickname"
+            }
+          }
+        ],
+        "any_of": [],
+        "timeout_ms": 5000
+      },
+      "id": "s10",
+      "intent": "Enter the nickname",
+      "phase": "task",
+      "provenance": {
+        "run_id": "disc-20261017T200007",
+        "trace_index": 9
+      },
+      "resume_anchor": "s04",
+      "risk": "reversible",
+      "target": {
+        "description": "textbox next to \"Nickname:\"",
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "anchor": {
+              "literal": "Nickname:"
+            },
+            "kind": "near_text",
+            "match": "exact",
+            "relation": "same_row",
+            "role": "textbox"
+          },
+          {
+            "kind": "css",
+            "selector": "input[name=\"f8\"]"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "kind": "fill",
+        "value": {
+          "param": "initial_deposit"
+        }
+      },
+      "expect": {
+        "all_of": [
+          {
+            "kind": "value_equals",
+            "target": {
+              "description": "textbox next to \"Opening Deposit:\"",
+              "frame": [
+                {
+                  "name": "main"
+                }
+              ],
+              "min_agreement": 1,
+              "strategies": [
+                {
+                  "anchor": {
+                    "literal": "Opening Deposit:"
+                  },
+                  "kind": "near_text",
+                  "match": "exact",
+                  "relation": "same_row",
+                  "role": "textbox"
+                },
+                {
+                  "kind": "css",
+                  "selector": "input[name=\"f9\"]"
+                }
+              ]
+            },
+            "value": {
+              "param": "initial_deposit"
+            }
+          }
+        ],
+        "any_of": [],
+        "timeout_ms": 5000
+      },
+      "id": "s11",
+      "intent": "Enter the opening deposit",
+      "phase": "task",
+      "provenance": {
+        "run_id": "disc-20261017T200007",
+        "trace_index": 10
+      },
+      "resume_anchor": "s04",
+      "risk": "reversible",
+      "target": {
+        "description": "textbox next to \"Opening Deposit:\"",
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "anchor": {
+              "literal": "Opening Deposit:"
+            },
+            "kind": "near_text",
+            "match": "exact",
+            "relation": "same_row",
+            "role": "textbox"
+          },
+          {
+            "kind": "css",
+            "selector": "input[name=\"f9\"]"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "kind": "select",
+        "value": {
+          "literal": "Cash"
+        }
+      },
+      "expect": {
+        "all_of": [
+          {
+            "kind": "value_equals",
+            "target": {
+              "description": "combobox next to \"Funding Source:\"",
+              "frame": [
+                {
+                  "name": "main"
+                }
+              ],
+              "min_agreement": 1,
+              "strategies": [
+                {
+                  "anchor": {
+                    "literal": "Funding Source:"
+                  },
+                  "kind": "near_text",
+                  "match": "exact",
+                  "relation": "same_row",
+                  "role": "combobox"
+                },
+                {
+                  "kind": "css",
+                  "selector": "select[name=\"f10\"]"
+                }
+              ]
+            },
+            "value": {
+              "literal": "Cash"
+            }
+          }
+        ],
+        "any_of": [],
+        "timeout_ms": 5000
+      },
+      "id": "s12",
+      "intent": "Set funding source to Cash",
+      "phase": "task",
+      "provenance": {
+        "run_id": "disc-20261017T200007",
+        "trace_index": 11
+      },
+      "resume_anchor": "s04",
+      "risk": "reversible",
+      "target": {
+        "description": "combobox next to \"Funding Source:\"",
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "anchor": {
+              "literal": "Funding Source:"
+            },
+            "kind": "near_text",
+            "match": "exact",
+            "relation": "same_row",
+            "role": "combobox"
+          },
+          {
+            "kind": "css",
+            "selector": "select[name=\"f10\"]"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "kind": "click"
+      },
+      "expect": {
+        "all_of": [
+          {
+            "frame": [
+              {
+                "name": "main"
+              }
+            ],
+            "kind": "route_matches",
+            "pattern": "/core/confirm.do*"
+          },
+          {
+            "frame": [
+              {
+                "name": "main"
+              }
+            ],
+            "kind": "text_visible",
+            "match": "contains",
+            "text": {
+              "literal": "Sub-Account Opened"
+            }
+          },
+          {
+            "frame": [
+              {
+                "name": "main"
+              }
+            ],
+            "kind": "text_visible",
+            "match": "contains",
+            "text": {
+              "param": "member_id"
+            }
+          }
+        ],
+        "any_of": [],
+        "timeout_ms": 8000
+      },
+      "id": "s13",
+      "intent": "Submit to open the {account_type} sub-account",
+      "phase": "task",
+      "provenance": {
+        "run_id": "disc-20261017T200007",
+        "trace_index": 12
+      },
+      "risk": "irreversible",
+      "target": {
+        "description": "button \"Open Account\"",
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "min_agreement": 2,
+        "strategies": [
+          {
+            "kind": "role",
+            "match": "exact",
+            "name": {
+              "literal": "Open Account"
+            },
+            "role": "button"
+          },
+          {
+            "kind": "css",
+            "selector": "body > font > form > table > tbody > tr:nth-of-type(6) > td:nth-of-type(2) > input:nth-of-type(1)"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "kind": "read",
+        "output": "confirmation_number"
+      },
+      "expect": {
+        "all_of": [
+          {
+            "kind": "element_present",
+            "target": {
+              "description": "Read the confirmation number",
+              "frame": [
+                {
+                  "name": "main"
+                }
+              ],
+              "min_agreement": 1,
+              "strategies": [
+                {
+                  "kind": "css",
+                  "selector": "body > font > table:nth-of-type(2) > tbody > tr:nth-of-type(1) > td:nth-of-type(2)"
+                }
+              ]
+            }
+          }
+        ],
+        "any_of": [],
+        "timeout_ms": 5000
+      },
+      "id": "s14",
+      "intent": "Read the confirmation number",
+      "phase": "task",
+      "provenance": {
+        "run_id": "disc-20261017T200007",
+        "trace_index": 13
+      },
+      "risk": "safe",
+      "target": {
+        "description": "Read the confirmation number",
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "min_agreement": 1,
+        "strategies": [
+          {
+            "kind": "css",
+            "selector": "body > font > table:nth-of-type(2) > tbody > tr:nth-of-type(1) > td:nth-of-type(2)"
+          }
+        ]
+      }
+    }
+  ],
+  "success": {
+    "all_of": [
+      {
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "kind": "route_matches",
+        "pattern": "/core/confirm.do*"
+      },
+      {
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "kind": "text_visible",
+        "match": "contains",
+        "text": {
+          "literal": "Sub-Account Opened"
+        }
+      },
+      {
+        "frame": [
+          {
+            "name": "main"
+          }
+        ],
+        "kind": "text_visible",
+        "match": "contains",
+        "text": {
+          "param": "member_id"
+        }
+      }
+    ],
+    "any_of": [],
+    "timeout_ms": 8000
+  }
+}

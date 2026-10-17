@@ -546,6 +546,12 @@ class DiscoveryAgent:
         req = ApprovalRequest(run_id=self.run_id, step_id=f"trace-{len(self.trace)}", intent=intent,
                               target=f"{role} \"{name or ''}\"", bound_to=self.run_id,
                               summary=self._approval_display())  # terminal only, never persisted
+        for f in self.page.frames:  # stray keystrokes into the browser must not submit a filled form
+            try:
+                f.evaluate("() => document.activeElement && document.activeElement.blur && "
+                           "document.activeElement.blur()")
+            except Exception:
+                pass
         decision = self.operator.approve(req)
         rec = {"step": req.step_id, "intent": intent, "target": req.target, "decision": decision.decision,
                "approver": decision.approver, "approved_at": decision.at, "channel": self.operator.name,

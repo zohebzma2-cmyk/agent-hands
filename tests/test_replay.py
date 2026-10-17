@@ -455,3 +455,144 @@ def test_discover_refuses_without_an_interactive_terminal(monkeypatch, capsys):
     monkeypatch.setattr("sys.stdin", io.StringIO(""))
     assert main(["discover", "--spec", "specs/open_sub_account.json", "-p", "member_id=900001"]) == 1
     assert "interactive terminal" in capsys.readouterr().err
+
+
+# --- regression: validation replay of disc-20261017T200007 ------------------------------------
+# Root cause: while the approval prompt waited, input reached the browser and submitted the filled
+# form; the unarmed CommitGuard blocked it (nothing committed), the form page became Chromium's
+# blocked-request page, and the engine reported target_not_found. The approval path itself was fine.
+
+import io as _io
+
+from agent_hands.handoff.operator import TerminalOperator
+
+DISCOVERED = Path(__file__).parent / "fixtures" / "discovered_open_sub_account.json"
+
+
+class _Spy:
+    """Capture the engine a replay() call builds."""
+
+    def __enter__(self):
+        self.orig = ReplayEngine.__init__
+        spy = self
+
+        def init(eng, *a, **k):
+            spy.orig(eng, *a, **k)
+            spy.engine = eng
+
+        ReplayEngine.__init__ = init  # type: ignore[method-assign]
+        return self
+
+    def __exit__(self, *exc):
+        ReplayEngine.__init__ = self.orig  # type: ignore[method-assign]
+
+
+def _replay_draft(sim, draft, operator):
+    sim.state.reset()
+    session = BrowserSession(policy=Policy(allowlist_for(sim.url)))
+    session.start()
+    try:
+        eng = ReplayEngine(draft, load_profile("cu_core"), session,
+                           ReplayConfig(run_id="regress", origin=sim.url, allow_draft=True), operator=operator)
+        return eng.run(PARAMS), eng
+    finally:
+        session.close()
+
+
+def _assert_committed_once(sim, result, eng):
+    assert isinstance(result, Succeeded), result
+    s13 = next(s for s in result.steps if s.step_id == "s13")
+    assert s13.status == "ok"  # clicked by automation, and the confirm checkpoint held
+    assert any(e["kind"] == "act" and e.get("step_id") == "s13" for e in eng.log.events)
+    assert eng.guard.passed == ["/core/subacct.do"]  # the approval armed exactly one submit
+    assert len(sim.state.snapshot()["subaccounts"]) == 1
+    assert result.commit_state == "committed"
+
+
+def test_terminal_approval_arms_the_click_and_the_confirm_checkpoint_passes(sim, artifact):
+    result, eng = _replay_draft(sim, artifact, TerminalOperator(stream_in=_io.StringIO("approve\n"),
+                                                                 stream_out=_io.StringIO()))
+    _assert_committed_once(sim, result, eng)
+
+
+def test_the_discovered_draft_validates_with_a_terminal_approval(sim):
+    draft = CapabilityArtifact.model_validate_json(DISCOVERED.read_text())
+    assert draft.provenance.provider == "openrouter"
+    result, eng = _replay_draft(sim, draft, TerminalOperator(stream_in=_io.StringIO("approve\n"),
+                                                              stream_out=_io.StringIO()))
+    _assert_committed_once(sim, result, eng)
+
+
+class _KeysIntoBrowser(TerminalOperator):
+    """'approve' + Enter typed while the browser, not the terminal, has keyboard focus."""
+
+    def __init__(self, page_ref):
+        super().__init__(stream_in=_io.StringIO("approve\n"), stream_out=_io.StringIO())
+        self.page_ref = page_ref
+
+    def approve(self, req):
+        page = self.page_ref()
+        page.keyboard.type("approve")
+        page.keyboard.press("Enter")
+        page.wait_for_timeout(300)
+        return super().approve(req)
+
+
+def test_keystrokes_landing_in_the_browser_during_approval_dont_submit(sim):
+    draft = CapabilityArtifact.model_validate_json(DISCOVERED.read_text())
+    holder = {}
+    with _Spy() as spy:
+        op = _KeysIntoBrowser(lambda: spy.engine.page)
+        result, eng = _replay_draft(sim, draft, op)
+    _assert_committed_once(sim, result, eng)
+    assert eng.guard.blocked == []  # focus was cleared before the prompt: Enter had nothing to submit
+
+
+class _SubmitsBehindOurBack(TerminalOperator):
+    """A click/submit in the browser that no blur can stop, while the prompt waits."""
+
+    def __init__(self, page_ref):
+        super().__init__(stream_in=_io.StringIO("approve\n"), stream_out=_io.StringIO())
+        self.page_ref = page_ref
+
+    def approve(self, req):
+        main = self.page_ref().frame(name="main")
+        main.evaluate("() => document.forms[0].submit()")
+        self.page_ref().wait_for_timeout(500)
+        return super().approve(req)
+
+
+def test_an_unapproved_submit_is_blocked_and_the_run_recovers_from_its_anchor(sim):
+    draft = CapabilityArtifact.model_validate_json(DISCOVERED.read_text())
+    with _Spy() as spy:
+        result, eng = _replay_draft(sim, draft, _SubmitsBehindOurBack(lambda: spy.engine.page))
+    _assert_committed_once(sim, result, eng)  # exactly one account: the approved one
+    assert ("engine.unapproved_submit_blocked", "restored_from_anchor") in [(r.condition, r.action)
+                                                                           for r in result.recoveries]
+    blocked = [e for e in eng.log.events if e["kind"] == "network_blocked"]
+    assert blocked and blocked[0]["by"] == "commit_guard" and blocked[0]["path"] == "/core/subacct.do"
+
+
+def test_without_a_safe_anchor_the_block_is_escalated_under_its_real_name(sim, artifact):
+    data = json.loads(artifact.canonical_json())
+    for st in data["steps"]:
+        st.pop("resume_anchor", None)
+    no_anchor = CapabilityArtifact.model_validate(data)
+    with _Spy() as spy:
+        op = _SubmitsBehindOurBack(lambda: spy.engine.page)
+        op.handle = lambda req, ctx: __import__("agent_hands.handoff.operator", fromlist=["x"]).HandoffOutcome("aborted")
+        seen = []
+        orig_intervention = ReplayEngine._intervention
+
+        def capture(self, step, reason, detail, ask):
+            seen.append((reason, detail))
+            return orig_intervention(self, step, reason, detail, ask)
+
+        ReplayEngine._intervention = capture  # type: ignore[method-assign]
+        try:
+            result, _ = _replay_draft(sim, no_anchor, op)
+        finally:
+            ReplayEngine._intervention = orig_intervention  # type: ignore[method-assign]
+    assert sim.state.snapshot()["subaccounts"] == []
+    assert seen and seen[0][0] == "unexpected_state" and "unapproved submit" in seen[0][1]
+    assert "target_not_found" not in [r for r, _ in seen]

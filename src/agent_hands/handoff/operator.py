@@ -181,7 +181,8 @@ class TerminalOperator:
         self._say(
             "\n" + "=" * 72 + "\n APPROVAL REQUIRED: irreversible step\n" + "=" * 72
             + f"\n step:    {req.step_id}  {req.intent}\n target:  {req.target}\n effect:  {req.summary}"
-            + f"\n run:     {req.run_id}\n\n Type 'approve' to let automation click it, or 'reject' to stop."
+            + f"\n run:     {req.run_id}\n\n Keep the focus in this terminal; don't type into the browser window"
+            + " (Enter in a filled form would try to submit it).\n Type 'approve' to let automation click it, or 'reject' to stop."
         )
         while True:
             self.out.write(" > ")
