@@ -1,0 +1,20 @@
+# interface.ai's brief stays local; not ours to publish
+materials/
+
+# python / uv
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+dist/
+
+# runtime scratch (evidence/ is committed; runs/ is not)
+runs/
+interventions/
+*.trace.zip
+
+# secrets, belt and braces
+.env
+.env.*
+*.key
