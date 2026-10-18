@@ -13,7 +13,6 @@ happens (a human approves it).
 from __future__ import annotations
 
 import base64
-import datetime as dt
 import hashlib
 import re
 import time
@@ -37,7 +36,7 @@ from agent_hands.artifact.schema import (
     Value,
 )
 from agent_hands.artifact.spec import CapabilitySpec
-from agent_hands.evidence import RunLog
+from agent_hands.evidence import RunLog, mask_locators
 from agent_hands.handoff.lease import Lease, Owner
 from agent_hands.handoff.operator import (
     ApprovalRequest,
@@ -47,7 +46,6 @@ from agent_hands.handoff.operator import (
     now,
 )
 from agent_hands.llm.base import Provider, ToolCall
-from agent_hands.evidence import mask_locators
 from agent_hands.policy import CommitGuard, PolicyViolation
 from agent_hands.profile import AppProfile, post_is_irreversible
 from agent_hands.redact import DEFAULT_PATTERNS, Redactor, compile_patterns, mask_cells
@@ -252,7 +250,8 @@ class DiscoveryAgent:
                     if nudged:
                         raise _Finish("stuck", "the model stopped calling tools before done()")
                     nudged = True
-                    content = [{"type": "text", "text": "Continue with a tool call; call done when the goal is reached."}]
+                    nudge = "Continue with a tool call; call done when the goal is reached."
+                    content = [{"type": "text", "text": nudge}]
                     continue
                 results: list[dict[str, Any]] = []
                 finish: _Finish | None = None
@@ -277,7 +276,8 @@ class DiscoveryAgent:
         except Exception as e:  # provider outage, browser error: still record what happened
             status, reason = "error", self.redactor.scrub_exception(e)[:400]
         self.log.event("discovery_end", status=status, reason=reason, steps=len(self.trace))
-        return DiscoveryResult(status, self.redactor.scrub(reason), self.trace, dict(self.outputs), self.turns, self.run_dir)
+        return DiscoveryResult(status, self.redactor.scrub(reason), self.trace, dict(self.outputs), self.turns,
+                               self.run_dir)
 
     def _briefing(self) -> str:
         goal = self.spec.goal
@@ -299,7 +299,7 @@ class DiscoveryAgent:
             if f.is_detached():
                 continue
             for line in visible_text(f).splitlines():
-                for raw, masked in zip(line.split("\t"), mask_cells(line).split("\t")):
+                for raw, masked in zip(line.split("\t"), mask_cells(line).split("\t"), strict=True):
                     if masked.strip() == "▒" and len(raw.strip()) >= 4:  # "S10" must not eat step id s10
                         value = norm(raw)
                         variants = {value, value.lstrip("$ ")}
@@ -619,6 +619,3 @@ class DiscoveryAgent:
         self.turns.append(rec)
         self.log.event("model_turn", **rec)
 
-
-def utc_stamp() -> str:
-    return dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")

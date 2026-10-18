@@ -3,7 +3,7 @@ name = "agent-hands"
 version = "0.1.0"
 description = "Record-once, replay-many computer use for legacy back-office UIs (interface.ai take-home)"
 authors = [
-    { name = "Zoheb", email = "zohebzma@gmail.com" }
+    { name = "Zoheb Alvi", email = "zohebzma@gmail.com" }
 ]
 requires-python = ">=3.12"
 dependencies = [
@@ -19,6 +19,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "ruff>=0.17.1",
 ]
 
 [project.scripts]
@@ -30,7 +31,18 @@ module-name = ["agent_hands", "cu_sim"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
-    "live: needs the real Anthropic API (key from Keychain); skipped by default",
     "browser: drives Chromium against the local target app",
 ]
-addopts = "-m 'not live'"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# long lines here are inside embedded JavaScript or HTML string literals
+"src/agent_hands/handoff/operator.py" = ["E501"]
+"src/agent_hands/surface/describe.py" = ["E501"]
+"src/agent_hands/surface/locate.py" = ["E501"]
+"src/cu_sim/app.py" = ["E501"]

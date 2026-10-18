@@ -40,7 +40,7 @@ NAMELESS_ROLES = {"generic", "text", "none", "presentation", "rowgroup", "row", 
 
 _INFO_JS = r"""
 el => {
-  const norm = s => (s || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  const norm = s => (s || '').replace(/\s+/g, ' ').trim();
   const cellsOf = tr => Array.from(tr.children).filter(c => c.tagName === 'TD' || c.tagName === 'TH');
   const tag = el.tagName.toLowerCase();
   const cell = (tag === 'td' || tag === 'th') ? el : el.closest('td,th');

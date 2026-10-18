@@ -9,39 +9,44 @@ import pytest
 from browser_helpers import allowlist_for
 
 import cu_sim
+from agent_hands.agent.pipeline import discover
 from agent_hands.artifact.schema import ActionKind, ParamRef, SecretValue, Status
 from agent_hands.artifact.spec import CapabilitySpec
 from agent_hands.evidence import EVIDENCE_ROOT, EvidenceGuardError, RunLog
 from agent_hands.handoff.operator import ScriptedOperator
-from agent_hands.agent.pipeline import discover
 from agent_hands.llm.fake import ScriptedFakeProvider, ref_for
 from agent_hands.redact import Redactor
 from agent_hands.replay.result import Succeeded
 
 pytestmark = pytest.mark.browser
 
-SPEC = CapabilitySpec.model_validate(json.loads((Path(__file__).parents[1] / "specs" / "open_sub_account.json").read_text()))
+SPEC_PATH = Path(__file__).parents[1] / "specs" / "open_sub_account.json"
+SPEC = CapabilitySpec.model_validate(json.loads(SPEC_PATH.read_text()))
 PARAMS = {"member_id": "900001", "account_type": "Savings", "nickname": "Rainy day", "initial_deposit": "25.00"}
 
 
 def happy_script(extra_after_member=()):
     r = ref_for
     return [
-        ("fill", lambda s: {"ref": r(s, r"- textbox\b"), "intent": "Enter the teller user ID", "secret": "teller_username"}),
-        ("fill", lambda s: {"ref": r(s, r"- textbox\b", 1), "intent": "Enter the password", "secret": "teller_password"}),
+        ("fill", lambda s: {"ref": r(s, r"- textbox\b"), "intent": "Enter the teller user ID",
+                            "secret": "teller_username"}),
+        ("fill", lambda s: {"ref": r(s, r"- textbox\b", 1), "intent": "Enter the password",
+                            "secret": "teller_password"}),
         ("click", lambda s: {"ref": r(s, r'button "Sign On"'), "intent": "Sign on"}),
         ("fill", lambda s: {"ref": r(s, r"- textbox\b"), "intent": "Type the member number", "param": "member_id"}),
         ("click", lambda s: {"ref": r(s, r'button "Find"'), "intent": "Run the search"}),
         ("click", lambda s: {"ref": r(s, r'cell "900001"'), "intent": "Open the member"}),
         *extra_after_member,
-        ("read", lambda s: {"ref": r(s, r'cell "\$812\.40"'), "intent": "Read the base share balance", "output": "share_balance"}),
+        ("read", lambda s: {"ref": r(s, r'cell "\$812\.40"'), "intent": "Read the base share balance",
+                            "output": "share_balance"}),
         ("click", lambda s: {"ref": r(s, r'button "Open Sub-Account"'), "intent": "Open the sub-account form"}),
         ("select", lambda s: {"ref": r(s, r"- combobox\b"), "intent": "Choose the type", "param": "account_type"}),
         ("fill", lambda s: {"ref": r(s, r"- textbox\b"), "intent": "Enter the nickname", "param": "nickname"}),
         ("fill", lambda s: {"ref": r(s, r"- textbox\b", 1), "intent": "Enter the deposit", "literal": "25.00"}),
         ("select", lambda s: {"ref": r(s, r"- combobox\b", 1), "intent": "Fund from cash", "literal": "Cash"}),
         ("click", lambda s: {"ref": r(s, r'button "Open Account"'), "intent": "Submit to open the account"}),
-        ("read", lambda s: {"ref": r(s, r'cell "SA-\d+"'), "intent": "Read the confirmation number", "output": "confirmation_number"}),
+        ("read", lambda s: {"ref": r(s, r'cell "SA-\d+"'), "intent": "Read the confirmation number",
+                            "output": "confirmation_number"}),
         ("done", lambda s: {"summary": "opened"}),
     ]
 
@@ -201,7 +206,8 @@ def test_unused_param_blocks_compilation(sim, tmp_path):
 
 
 def test_truncated_turn_is_not_executed(sim, tmp_path):
-    script = [("click", lambda s: {"ref": ref_for(s, r'button "Sign On"'), "intent": "x"}, {"stop_reason": "max_tokens"}),
+    script = [("click", lambda s: {"ref": ref_for(s, r'button "Sign On"'), "intent": "x"},
+               {"stop_reason": "max_tokens"}),
               ("give_up", lambda s: {"reason": "x"})]
     res = run(sim, script, tmp_path)
     assert res.discovery.trace == []
@@ -294,5 +300,5 @@ def test_stability_refuses_fake_artifacts_into_evidence(sim, tmp_path):
     res = run(sim, happy_script(), tmp_path)
     path = tmp_path / "fake-artifact.json"
     path.write_text(res.artifact.canonical_json())
-    assert main(["stability", str(path), "--runs", "1", "--out", str(EVIDENCE_ROOT / "should-not-exist")]) == 1
+    assert main(["stability", str(path), "--runs", "1", "--out", str(EVIDENCE_ROOT / "should-not-exist")]) == 2
     assert not (EVIDENCE_ROOT / "should-not-exist").exists()

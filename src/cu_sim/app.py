@@ -133,7 +133,8 @@ class SimState:
     def snapshot(self) -> dict[str, Any]:
         with self.lock:
             return {
-                "faults": {k: {"mode": v.mode, "ms": v.ms, "at": v.at, "fired": v.fired} for k, v in self.faults.items()},
+                "faults": {k: {"mode": v.mode, "ms": v.ms, "at": v.at, "fired": v.fired}
+                           for k, v in self.faults.items()},
                 "subaccounts": list(self.subaccounts),
                 "sessions": len(self.sessions),
             }
@@ -656,7 +657,8 @@ def start(port: int = 0, control_port: int = 0, tenant: str = "ridgeline", host:
     app.state, app.tenant = state, tenant
     control = _ControlServer((host, control_port), ControlHandler)
     control.state = state
-    threads = [threading.Thread(target=s.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True) for s in (app, control)]
+    threads = [threading.Thread(target=s.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True)
+               for s in (app, control)]
     for th in threads:
         th.start()
     return SimServer(app, control, state, threads)

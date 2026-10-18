@@ -27,6 +27,7 @@ PATTERNS = {
     "sk-or- key shape": rb"sk-or-[A-Za-z0-9_\-]{8,}", "sk-ant- key shape": rb"sk-ant-[A-Za-z0-9_\-]{8,}",
     # bare JSON numbers (": 900580,") are durations/counters; member numbers are always strings/text
     "home path /Users/": rb"/Users/", "member number 9xxxxx": rb'(?<![\w-])(?<!": )9\d{5}(?!\d)',
+    "local temp path": rb"/var/folders/|pytest-of-",
     "account number (9-17 digits, not in a gen- id)": rb"(?<!gen-)(?<![\w-])\d{9,17}(?!\d)",
 }
 

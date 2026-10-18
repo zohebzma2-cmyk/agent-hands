@@ -29,6 +29,8 @@ from typing import Any
 from agent_hands import __version__
 from agent_hands.agent.loop import TraceStep
 from agent_hands.artifact.schema import (
+    RISK_ORDER,
+    SCHEMA_VERSION,
     ActionKind,
     CapabilityArtifact,
     LiteralValue,
@@ -266,9 +268,9 @@ def compile_trace(
     if missing:
         raise CompileError(f"outputs never read: {missing}")
 
-    risk = max((t.risk for t in kept), key=lambda r: ["safe", "reversible", "irreversible"].index(r.value))
+    risk = max((t.risk for t in kept), key=lambda r: RISK_ORDER[r])
     data = {
-        "schema_version": "1.0",
+        "schema_version": SCHEMA_VERSION,
         "capability": {"id": spec.id, "version": "1.0.0", "title": spec.title, "description": spec.description,
                        "status": "draft", "risk": risk.value},
         "app": {"profile": spec.profile, "profile_versions": spec.profile_versions, "entry_route": spec.entry_route},

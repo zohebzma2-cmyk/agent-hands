@@ -204,7 +204,8 @@ def resolve(page: Page, spec: TargetSpec, params: Mapping[str, Any]) -> Resolved
     for i, h in found[1:]:
         if not same_element(first, h):
             attempts[i] = StrategyAttempt(index=i, kind=spec.strategies[i].kind, outcome="disagree")
-            return done(None, FailureKind.TARGET_DISAGREEMENT, f"strategy {first_i} and {i} point at different elements")
+            detail = f"strategy {first_i} and {i} point at different elements"
+            return done(None, FailureKind.TARGET_DISAGREEMENT, detail)
     return done(first, used=first_i, agreed=[i for i, _ in found])
 
 

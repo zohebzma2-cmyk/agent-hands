@@ -123,7 +123,9 @@ EXAMPLE = {
             "action": {"kind": "fill", "value": {"secret": "teller_username"}},
             "target": target("User ID box", near("User ID", "textbox"), css("input[name=uid]"), frame=[]),
             "risk": "reversible",
-            "expect": checkpoint({"kind": "element_present", "target": target("Password box", near("Password", "textbox"), frame=[])}),
+            "expect": checkpoint(
+                {"kind": "element_present", "target": target("Password box", near("Password", "textbox"), frame=[])}
+            ),
         },
         {
             "id": "s02",
@@ -132,7 +134,10 @@ EXAMPLE = {
             "action": {"kind": "fill", "value": {"secret": "teller_password"}},
             "target": target("Password box", near("Password", "textbox"), frame=[]),
             "risk": "reversible",
-            "expect": checkpoint({"kind": "element_present", "target": target("Sign on button", role("button", lit("Sign On")), frame=[])}),
+            "expect": checkpoint(
+                {"kind": "element_present",
+                 "target": target("Sign on button", role("button", lit("Sign On")), frame=[])}
+            ),
         },
         {
             "id": "s03",

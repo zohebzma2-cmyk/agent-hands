@@ -34,7 +34,7 @@ class ProviderUnavailable(RuntimeError):
 
 
 class Provider(Protocol):
-    name: str  # "anthropic" or "fake"; evidence writing keys off this
+    name: str  # "anthropic", "openrouter", or "fake" (tests only); evidence writing keys off this
     model: str
 
     def start(self, system: str, tools: list[dict[str, Any]]) -> None: ...

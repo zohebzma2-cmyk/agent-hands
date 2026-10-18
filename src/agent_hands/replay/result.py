@@ -15,7 +15,7 @@ strategy matched on every step is recorded too; anything below the primary is su
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import TYPE_CHECKING, Annotated, Any, Literal, Union
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, computed_field, model_validator
 
@@ -133,6 +133,8 @@ class FailureKind(StrEnum):
     COMMIT_STATE_UNKNOWN = "commit_state_unknown"  # an irreversible action may or may not have landed
     APPROVAL_REJECTED = "approval_rejected"
     OPERATOR_ABORTED = "operator_aborted"
+    CONFIG_ERROR = "config_error"  # the run can't be set up as configured (e.g. a secret ref that won't resolve)
+    INTERNAL_ERROR = "internal_error"  # a bug in this engine, not a state of the app: report it, don't retry
 
 
 RETRYABLE = frozenset({FailureKind.APP_ERROR, FailureKind.TIMEOUT, FailureKind.SESSION_UNRECOVERABLE})
@@ -207,7 +209,7 @@ class _Base(Model):
         data = self.model_dump(mode="json")
         if "outputs" in data:
             masked = {}
-            for name, value in getattr(self, "outputs").items():
+            for name, value in self.outputs.items():
                 spec = artifact.output_spec(name)
                 masked[name] = mask_value(value, spec.redaction.value if spec else "mask")
             data["outputs"] = masked
@@ -240,7 +242,7 @@ class NeedsHuman(_Base):
     detail: str = ""
 
 
-ReplayResult = Annotated[Union[Succeeded, Outcome, Failed, NeedsHuman], Field(discriminator="status")]
+ReplayResult = Annotated[Succeeded | Outcome | Failed | NeedsHuman, Field(discriminator="status")]
 _ADAPTER: TypeAdapter[ReplayResult] = TypeAdapter(ReplayResult)
 
 

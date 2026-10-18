@@ -16,7 +16,7 @@ import re
 from collections.abc import Iterator, Mapping
 from decimal import Decimal, InvalidOperation
 from enum import StrEnum
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -106,8 +106,8 @@ class SecretValue(Model):
     secret: str = Field(pattern=IDENT)
 
 
-Text = Union[LiteralValue, ParamRef]
-Value = Union[LiteralValue, ParamRef, SecretValue]
+Text = LiteralValue | ParamRef
+Value = LiteralValue | ParamRef | SecretValue
 Match = Literal["exact", "contains"]
 
 
@@ -181,7 +181,7 @@ class XPathStrategy(Model):
 
 
 Strategy = Annotated[
-    Union[RoleStrategy, LabelStrategy, NearTextStrategy, TextStrategy, CssStrategy, XPathStrategy],
+    RoleStrategy | LabelStrategy | NearTextStrategy | TextStrategy | CssStrategy | XPathStrategy,
     Field(discriminator="kind"),
 ]
 
@@ -214,7 +214,7 @@ class TargetSpec(Model):
 
 
 # A frame path, or "any" to look in every frame (vendor-wide pages like errors land anywhere).
-FrameScope = Union[list[FrameRef], Literal["any"]]
+FrameScope = list[FrameRef] | Literal["any"]
 
 
 class TextVisible(Model):
@@ -253,7 +253,7 @@ class RouteMatches(Model):
 
 
 Condition = Annotated[
-    Union[TextVisible, ElementPresent, ElementAbsent, ValueEquals, RouteMatches],
+    TextVisible | ElementPresent | ElementAbsent | ValueEquals | RouteMatches,
     Field(discriminator="kind"),
 ]
 
@@ -583,7 +583,7 @@ def _unique(what: str, names: list[str]) -> None:
     seen: set[str] = set()
     for n in names:
         if n in seen:
-            raise ValueError(f"duplicate {what} '{n}'" if what != "step id" else f"duplicate step id '{n}'")
+            raise ValueError(f"duplicate {what} '{n}'")
         seen.add(n)
 
 

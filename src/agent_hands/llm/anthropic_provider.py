@@ -41,9 +41,9 @@ class AnthropicProvider:
         self.model, self.effort, self.max_tokens, self.fallbacks = model, effort, max_tokens, fallbacks
         try:
             key = keychain_read(KEYCHAIN_SERVICE)
-        except SecretUnavailable:
+        except SecretUnavailable as e:
             raise ProviderUnavailable(
-                f"Keychain item '{KEYCHAIN_SERVICE}' could not be read; stopping. "
+                f"Keychain item '{KEYCHAIN_SERVICE}' could not be read ({e}); stopping. "
                 "No other key source is consulted."
             ) from None
         register_process_secret(key)

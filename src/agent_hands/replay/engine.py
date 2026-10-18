@@ -42,13 +42,13 @@ from agent_hands.artifact.schema import (
     ActionKind,
     CapabilityArtifact,
     Checkpoint,
+    LiteralValue,
     Model,
     OutputType,
     ParamError,
     Risk,
     Status,
     Step,
-    LiteralValue,
     TextVisible,
 )
 from agent_hands.evidence import RunLog
@@ -77,7 +77,7 @@ from agent_hands.replay.result import (
     StepRecord,
     Succeeded,
 )
-from agent_hands.secrets import resolve_secret
+from agent_hands.secrets import SecretUnavailable, resolve_secret
 from agent_hands.surface.locate import obscured_by, resolve
 from agent_hands.surface.web import (
     BrowserSession,
@@ -178,7 +178,8 @@ class ReplayEngine:
         self.lease = Lease()
         self.epoch = self.lease.epoch
         self.redactor = Redactor(tuple((*DEFAULT_PATTERNS, *compile_patterns(profile.pii_patterns))))
-        self.log = RunLog(run_dir, self.redactor, backend="replay" if artifact.provenance.provider != "fake" else "fake")
+        backend = "fake" if artifact.provenance.provider == "fake" else "replay"
+        self.log = RunLog(run_dir, self.redactor, backend=backend)
         self.capture = HumanCapture(self.lease, self.redactor)
         if operator is not None:
             assert session.context is not None
@@ -227,9 +228,11 @@ class ReplayEngine:
             except ParamError as e:
                 raise _Stop("failed", failure=Failure(
                     kind=FailureKind.PARAM_INVALID, step_id=None,
-                    expected="params matching the capability contract", observed=str(e)))
-            self.secrets = {s.name: self.resolve_secret(self.cfg.secret_overrides.get(s.name, s.ref)) for s in self.a.secrets}
-            self.redactor = Redactor.from_contract(self.a, params=self.params, secrets=self.secrets, patterns=self.patterns)
+                    expected="params matching the capability contract", observed=str(e))) from None
+            self.secrets = {s.name: self.resolve_secret(self.cfg.secret_overrides.get(s.name, s.ref))
+                            for s in self.a.secrets}
+            self.redactor = Redactor.from_contract(self.a, params=self.params, secrets=self.secrets,
+                                                   patterns=self.patterns)
             for spec in self.a.params:  # what the screen shows for a sensitive param is sensitive too
                 if self.ui_params.get(spec.name) != self.params.get(spec.name):
                     self.redactor.add(spec.name, self.ui_params[spec.name], spec.sensitivity)
@@ -242,19 +245,28 @@ class ReplayEngine:
             result_kind, data = s.result_kind, s.data
         except PolicyViolation as e:
             result_kind, data = "failed", {"failure": Failure(
-                kind=FailureKind.POLICY_DENIED, step_id=self._current_step_id(), expected=f"stay within allowlist",
+                kind=FailureKind.POLICY_DENIED, step_id=self._current_step_id(), expected="stay within allowlist",
                 observed=e.detail)}
         except PlaywrightTimeout as e:
             result_kind, data = "failed", {"failure": Failure(
                 kind=FailureKind.TIMEOUT, step_id=self._current_step_id(), expected="the browser to respond in time",
                 observed=self.redactor.scrub_exception(e)[:300])}
-        except LeaseError as e:
+        except SecretUnavailable as e:  # a tenant's secret ref doesn't resolve: configuration, not a bug
             result_kind, data = "failed", {"failure": Failure(
-                kind=FailureKind.UNEXPECTED_STATE, step_id=self._current_step_id(), expected="automation holds the session",
+                kind=FailureKind.CONFIG_ERROR, step_id=self._current_step_id(),
+                expected="every secret reference resolves", observed=str(e))}
+        except PlaywrightError as e:  # the browser went away or a page context died mid-call
+            result_kind, data = "failed", {"failure": Failure(
+                kind=FailureKind.UNEXPECTED_STATE, step_id=self._current_step_id(),
+                expected="a usable browser page", observed=self.redactor.scrub_exception(e)[:300])}
+        except LeaseError as e:  # automation tried to act without the lease: a bug in the engine, not the page
+            result_kind, data = "failed", {"failure": Failure(
+                kind=FailureKind.INTERNAL_ERROR, step_id=self._current_step_id(),
+                expected="automation holds the session",
                 observed=str(e))}
         except Exception as e:  # the engine always returns a result; never a raw traceback with data in it
             result_kind, data = "failed", {"failure": Failure(
-                kind=FailureKind.UNEXPECTED_STATE, step_id=self._current_step_id(), expected="no internal error",
+                kind=FailureKind.INTERNAL_ERROR, step_id=self._current_step_id(), expected="no internal error",
                 observed=self.redactor.scrub_exception(e)[:500])}
         return self._finish(result_kind, data, started, t0)
 
@@ -345,7 +357,8 @@ class ReplayEngine:
                 if step.id in self.commits:  # belt and braces: the schema already forbids re-running a commit
                     raise _Stop("failed", failure=Failure(
                         kind=FailureKind.UNEXPECTED_STATE, step_id=step.id, intent=step.intent,
-                        expected="each irreversible step runs at most once", observed="the step was about to run again"))
+                        expected="each irreversible step runs at most once",
+                        observed="the step was about to run again"))
                 action_path = handle.evaluate(
                     "e => { const f = e.form || (e.closest && e.closest('form'));"
                     " return f ? new URL(f.getAttribute('action') || location.href, location.href).pathname : null; }")
@@ -469,9 +482,11 @@ class ReplayEngine:
                     expected=self._describe_cp(step.expect), observed=page_summary(self.page),
                     screenshot=self.log.screenshot(self.page, f"{step.id}-checkpoint-failed", self._masks()))
                 if step.risk == Risk.IRREVERSIBLE and self.commits.get(step.id) == "in_doubt":
-                    return self._escalate(i, step, "commit_state_unknown", "submitted, but the confirmation never appeared",
-                                          ask="Check whether the commit landed. If it did, bring up its confirmation and "
-                                              "resume; if not, abort.", failure=failure, allow_retry=False)
+                    return self._escalate(
+                        i, step, "commit_state_unknown", "submitted, but the confirmation never appeared",
+                        ask="Check whether the commit landed. If it did, bring up its confirmation and resume; "
+                            "if not, abort.",
+                        failure=failure, allow_retry=False)
                 verdict = self._escalate(i, step, "checkpoint_failed", failure.expected,
                                          ask=f"Finish this step by hand if it's safe: {step.intent}", failure=failure)
                 if verdict == "retry":
@@ -718,7 +733,8 @@ class ReplayEngine:
         if not self._operator_can_approve():
             self.log.event("approval_required", step_id=step.id)
             raise _Stop("needs_human", reason="approval_required", step_id=step.id,
-                        detail=f"irreversible step '{step.intent}' needs an explicit approval bound to this artifact and params")
+                        detail=f"irreversible step '{step.intent}' needs an explicit approval bound to this "
+                               "artifact and params")
         self._quiet_page()
         decision = self.operator.approve(ApprovalRequest(
             run_id=self.cfg.run_id, step_id=step.id, intent=step.intent, target=step.target.description,
@@ -760,7 +776,8 @@ class ReplayEngine:
         return [([r.name for r in reg.frame if r.name], reg.css) for reg in self.profile.sensitive_regions]
 
     def _escalate(
-        self, i: int, step: Step, reason: str, detail: str, *, ask: str, failure: Failure | None, allow_retry: bool = True
+        self, i: int, step: Step, reason: str, detail: str, *, ask: str, failure: Failure | None,
+        allow_retry: bool = True,
     ) -> str:
         """Hand the live session to a human. Returns "completed" (human did the step) or "retry".
 
@@ -853,8 +870,11 @@ class ReplayEngine:
         self.log.event("intervention", id=iid, reason=reason, step_id=step.id)
         return req
 
-    def _handoff_record(self, req: InterventionRequest, out: HandoffOutcome, n_actions: int, ok: bool, why: str) -> None:
-        rec = HandoffRecord(intervention_id=req.id, step_id=req.step_id, reason=req.reason, requested_at=req.requested_at,
+    def _handoff_record(
+        self, req: InterventionRequest, out: HandoffOutcome, n_actions: int, ok: bool, why: str
+    ) -> None:
+        rec = HandoffRecord(intervention_id=req.id, step_id=req.step_id, reason=req.reason,
+                            requested_at=req.requested_at,
                             taken_by=out.taken_by, taken_at=out.taken_at, released_at=out.released_at,
                             resolution=out.resolution, human_actions=n_actions, verified=ok, verification=why)
         self.handoffs.append(rec)

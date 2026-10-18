@@ -180,10 +180,10 @@ def test_key_is_a_process_secret_and_matches_the_pattern():
 
 @pytest.mark.browser
 def test_discovery_through_openrouter_records_provenance_and_never_leaks_the_key(tmp_path, caplog):
-    import cu_sim
     from browser_helpers import allowlist_for
     from test_discovery import PARAMS, SPEC, happy_script
 
+    import cu_sim
     from agent_hands.agent.pipeline import discover
     from agent_hands.handoff.operator import ScriptedOperator
 

@@ -18,6 +18,7 @@ patterns = {
     "sk-or- key shape": re.compile(rb"sk-or-[A-Za-z0-9_\-]{8,}"),
     "sk-ant- key shape": re.compile(rb"sk-ant-[A-Za-z0-9_\-]{8,}"),
     "/Users/ path": re.compile(rb"/Users/"),
+    "local temp path": re.compile(rb"/var/folders/|pytest-of-"),
 }
 
 objects = subprocess.run(["git", "rev-list", "--all", "--objects"], capture_output=True, check=True).stdout

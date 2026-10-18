@@ -11,6 +11,7 @@ Values are never logged; callers register them with the redactor as ``secret``.
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 
 
@@ -19,6 +20,11 @@ class SecretUnavailable(RuntimeError):
 
 
 def keychain_read(service: str) -> str:
+    if shutil.which("security") is None:
+        raise SecretUnavailable(
+            "the macOS Keychain ('security') isn't available on this OS. Model keys are read only from the "
+            "macOS Keychain, on purpose; setup, tests and every replay work without one"
+        )
     try:
         out = subprocess.run(
             ["security", "find-generic-password", "-s", service, "-w"],

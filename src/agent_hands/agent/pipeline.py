@@ -8,10 +8,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from agent_hands.agent.loop import DiscoveryAgent, DiscoveryResult
-from agent_hands.artifact.compiler import CompileError, CompileReport, compile_trace
 from pydantic import ValidationError
 
+from agent_hands.agent.loop import DiscoveryAgent, DiscoveryResult
+from agent_hands.artifact.compiler import CompileError, CompileReport, compile_trace
 from agent_hands.artifact.schema import CapabilityArtifact
 from agent_hands.artifact.spec import CapabilitySpec
 from agent_hands.evidence import RunLog

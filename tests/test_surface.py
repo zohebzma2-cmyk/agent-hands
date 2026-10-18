@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from browser_helpers import allowlist_for, login, main_goto
+from playwright.sync_api import Error as PlaywrightError
 
 import cu_sim
 from agent_hands.artifact.schema import (
@@ -11,7 +12,6 @@ from agent_hands.artifact.schema import (
     LiteralValue,
     NearTextStrategy,
     ParamRef,
-    RoleStrategy,
     TargetSpec,
     TextVisible,
 )
@@ -82,7 +82,8 @@ def test_fallback_is_recorded(session):
 
 
 def test_frame_path_scopes_resolution(session):
-    r = resolve(session.page, spec({"kind": "role", "role": "button", "name": lit("Find")}, frame=[{"name": "nav"}]), {})
+    find_in_nav = spec({"kind": "role", "role": "button", "name": lit("Find")}, frame=[{"name": "nav"}])
+    r = resolve(session.page, find_in_nav, {})
     assert r.failure == FailureKind.TARGET_NOT_FOUND
 
 
@@ -116,7 +117,8 @@ def test_agreement_passes_when_strategies_agree(session):
 def test_cell_name_includes_input_values_so_role_is_ambiguous(session, sim):
     # The search box still holds 900003, and a cell's accessible name includes its input's value.
     main_goto(session.page, sim.url, "/core/search.do?f1=900003")
-    r = resolve(session.page, spec({"kind": "role", "role": "cell", "name": {"param": "member_id"}}), {"member_id": "900003"})
+    cell = spec({"kind": "role", "role": "cell", "name": {"param": "member_id"}})
+    r = resolve(session.page, cell, {"member_id": "900003"})
     assert r.failure == FailureKind.TARGET_AMBIGUOUS
 
 
@@ -193,14 +195,14 @@ def test_text_visible_any_frame(session, sim):
 
 def test_network_allowlist_blocks_off_origin(session):
     page = session.page
-    with pytest.raises(Exception):
+    with pytest.raises(PlaywrightError):
         page.goto("http://example.invalid/")
     assert any(d.rule == "origin_not_allowlisted" for d in session.policy.blocked)
 
 
 def test_network_allowlist_blocks_off_route(session, sim):
     main = session.page.frame(name="main")
-    with pytest.raises(Exception):
+    with pytest.raises(PlaywrightError):
         main.goto(sim.url + "/admin/console")
     assert any(d.rule == "route_not_allowlisted" for d in session.policy.blocked)
 

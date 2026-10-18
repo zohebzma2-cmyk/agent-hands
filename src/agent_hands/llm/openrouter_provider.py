@@ -62,9 +62,10 @@ class OpenRouterProvider:
         self.routing = {"only": list(upstream), "allow_fallbacks": False}
         try:
             key = key_reader(KEYCHAIN_SERVICE)
-        except SecretUnavailable:
+        except SecretUnavailable as e:
             raise ProviderUnavailable(
-                f"Keychain item '{KEYCHAIN_SERVICE}' could not be read; stopping (no other key source is consulted)."
+                f"Keychain item '{KEYCHAIN_SERVICE}' could not be read ({e}); stopping. "
+                "No other key source is consulted."
             ) from None
         register_process_secret(key)
         install_global_secret_scrub()

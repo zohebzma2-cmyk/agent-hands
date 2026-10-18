@@ -3,6 +3,7 @@ the no-LLM guarantee, and human handoff on the same live session (scripted human
 
 from __future__ import annotations
 
+import io as _io
 import json
 import subprocess
 import sys
@@ -14,7 +15,7 @@ from browser_helpers import allowlist_for
 
 import cu_sim
 from agent_hands.artifact.schema import CapabilityArtifact
-from agent_hands.handoff.operator import ScriptedOperator
+from agent_hands.handoff.operator import HandoffOutcome, ScriptedOperator, TerminalOperator
 from agent_hands.policy import Policy
 from agent_hands.profile import load_profile
 from agent_hands.replay.engine import ReplayConfig, ReplayEngine, approve
@@ -99,7 +100,8 @@ def _uncovered(page, masks, needles):
         handles = [h for loc in masks for h in loc.element_handles() if h.owner_frame() == f]
         found = f.evaluate_handle(
             """(needles) => Array.from(document.querySelectorAll('body *')).filter(el =>
-                 Array.from(el.childNodes).some(n => n.nodeType === 3 && needles.some(x => n.textContent.includes(x))))""",
+                 Array.from(el.childNodes).some(n => n.nodeType === 3
+                   && needles.some(x => n.textContent.includes(x))))""",
             list(needles),
         )
         for _, prop in found.get_properties().items():
@@ -109,10 +111,13 @@ def _uncovered(page, masks, needles):
     return bad
 
 
-@pytest.mark.parametrize("route", ["/core/member.do?mid=900001", "/core/subacct.do?mid=900001", "/core/search.do?f1=900001"])
+@pytest.mark.parametrize(
+    "route", ["/core/member.do?mid=900001", "/core/subacct.do?mid=900001", "/core/search.do?f1=900001"]
+)
 def test_screenshot_masks_cover_every_sensitive_value(sim, artifact, route):
-    from agent_hands.evidence import mask_locators
     from browser_helpers import login
+
+    from agent_hands.evidence import mask_locators
 
     sim.state.reset()
     session = BrowserSession(policy=Policy(allowlist_for(sim.url)))
@@ -348,7 +353,8 @@ def test_human_who_leaves_a_different_member_on_screen_fails_verification(sim, a
             supervisor(page)
         page.frame(name="main").goto(page.frame(name="main").url.split("/core/")[0] + "/core/member.do?mid=900002")
 
-    result, _ = replay(sim, artifact, faults={"unknown_dialog": {"mode": "once"}}, operator=ScriptedOperator(wrong_member))
+    result, _ = replay(sim, artifact, faults={"unknown_dialog": {"mode": "once"}},
+                       operator=ScriptedOperator(wrong_member))
     assert isinstance(result, Failed) and result.failure.kind == FailureKind.UNEXPECTED_STATE
     assert "checkpoint no longer holds" in result.handoffs[0].verification
     assert sim.state.snapshot()["subaccounts"] == []
@@ -422,7 +428,8 @@ def test_five_replays_take_identical_paths(sim, artifact):
     for i in range(5):
         result, engine = replay(sim, artifact, run_id=f"det-{i}")
         assert isinstance(result, Succeeded)
-        acts = [(e["kind"], e.get("step_id"), e.get("action")) for e in engine.log.events if e["kind"] in ("act", "step")]
+        acts = [(e["kind"], e.get("step_id"), e.get("action"))
+                for e in engine.log.events if e["kind"] in ("act", "step")]
         prints.append((fingerprint(result), acts, result.outputs["confirmation_number"]))
     assert all(p == prints[0] for p in prints)
 
@@ -430,7 +437,8 @@ def test_five_replays_take_identical_paths(sim, artifact):
 def test_replay_never_imports_a_model_provider():
     code = (
         "import sys, agent_hands.replay.engine, agent_hands.replay.result;"
-        "bad=[m for m in sys.modules if m.split('.')[0]=='anthropic' or m.startswith(('agent_hands.llm','agent_hands.agent'))];"
+        "bad=[m for m in sys.modules if m.split('.')[0]=='anthropic'"
+        " or m.startswith(('agent_hands.llm','agent_hands.agent'))];"
         "print(bad); sys.exit(1 if bad else 0)"
     )
     proc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
@@ -453,7 +461,8 @@ def test_discover_refuses_without_an_interactive_terminal(monkeypatch, capsys):
     from agent_hands.cli import main
 
     monkeypatch.setattr("sys.stdin", io.StringIO(""))
-    assert main(["discover", "--spec", "specs/open_sub_account.json", "-p", "member_id=900001"]) == 1
+    spec = str(Path(__file__).parents[1] / "specs" / "open_sub_account.json")
+    assert main(["discover", "--spec", spec, "-p", "member_id=900001"]) == 1
     assert "interactive terminal" in capsys.readouterr().err
 
 
@@ -461,10 +470,6 @@ def test_discover_refuses_without_an_interactive_terminal(monkeypatch, capsys):
 # Root cause: while the approval prompt waited, input reached the browser and submitted the filled
 # form; the unarmed CommitGuard blocked it (nothing committed), the form page became Chromium's
 # blocked-request page, and the engine reported target_not_found. The approval path itself was fine.
-
-import io as _io
-
-from agent_hands.handoff.operator import TerminalOperator
 
 DISCOVERED = Path(__file__).parent / "fixtures" / "discovered_open_sub_account.json"
 
@@ -540,7 +545,6 @@ class _KeysIntoBrowser(TerminalOperator):
 
 def test_keystrokes_landing_in_the_browser_during_approval_dont_submit(sim):
     draft = CapabilityArtifact.model_validate_json(DISCOVERED.read_text())
-    holder = {}
     with _Spy() as spy:
         op = _KeysIntoBrowser(lambda: spy.engine.page)
         result, eng = _replay_draft(sim, draft, op)
@@ -580,7 +584,7 @@ def test_without_a_safe_anchor_the_block_is_escalated_under_its_real_name(sim, a
     no_anchor = CapabilityArtifact.model_validate(data)
     with _Spy() as spy:
         op = _SubmitsBehindOurBack(lambda: spy.engine.page)
-        op.handle = lambda req, ctx: __import__("agent_hands.handoff.operator", fromlist=["x"]).HandoffOutcome("aborted")
+        op.handle = lambda req, ctx: HandoffOutcome("aborted")
         seen = []
         orig_intervention = ReplayEngine._intervention
 
@@ -630,3 +634,42 @@ def test_a_human_commit_during_a_handoff_is_tracked(sim, artifact):
     assert result.operator_submits == ["/core/subacct.do"]
     assert next(s for s in result.steps if s.step_id == "s13").status == "completed_by_human"
     assert len(sim.state.snapshot()["subaccounts"]) == 1
+
+
+@pytest.mark.parametrize("exc", [ValueError("boom in the engine"), "lease"])
+def test_engine_bugs_are_internal_errors_not_page_states(sim, artifact, monkeypatch, exc):
+    from agent_hands.handoff.lease import LeaseError
+
+    err = LeaseError("automation does not hold the session") if exc == "lease" else exc
+
+    def broken(self):
+        raise err
+
+    monkeypatch.setattr(ReplayEngine, "_execute", broken)
+    result, _ = replay(sim, artifact)
+    assert isinstance(result, Failed)
+    assert result.failure.kind == FailureKind.INTERNAL_ERROR and not result.failure.retryable
+
+
+
+def test_an_unresolvable_secret_is_a_config_error(sim, artifact):
+    sim.state.reset()
+    session = BrowserSession(policy=Policy(allowlist_for(sim.url)))
+    session.start()
+    try:
+        cfg = ReplayConfig(run_id="t", origin=sim.url, secret_overrides={"teller_password": "env:NO_SUCH_VAR_HERE"})
+        result = ReplayEngine(artifact, load_profile("cu_core"), session, cfg).run(PARAMS)
+    finally:
+        session.close()
+    assert isinstance(result, Failed) and result.failure.kind == FailureKind.CONFIG_ERROR
+
+
+def test_a_browser_error_is_an_unexpected_state_not_an_internal_error(sim, artifact, monkeypatch):
+    from playwright.sync_api import Error as PlaywrightError
+
+    def gone(self):
+        raise PlaywrightError("Target page, context or browser has been closed")
+
+    monkeypatch.setattr(ReplayEngine, "_execute", gone)
+    result, _ = replay(sim, artifact)
+    assert isinstance(result, Failed) and result.failure.kind == FailureKind.UNEXPECTED_STATE

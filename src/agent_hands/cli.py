@@ -29,6 +29,45 @@ from agent_hands.profile import load_profile
 from agent_hands.redact import install_log_filter
 
 TENANTS = REPO_ROOT / "config" / "tenants"
+TENANT_NAMES = sorted(p.stem for p in TENANTS.glob("*.json"))
+EXIT_CODES = {"succeeded": 0, "failed": 1, "outcome": 2, "needs_human": 3}
+
+
+class UsageError(Exception):
+    """Bad input from the command line: printed as one line, exit 2, nothing on stdout."""
+
+
+class _Parser(argparse.ArgumentParser):
+    """argparse, but its errors are one line like every other usage error."""
+
+    def error(self, message: str):  # type: ignore[override]
+        raise UsageError(f"{self.prog}: {message}")
+
+
+def _load_artifact(path: str) -> CapabilityArtifact:
+    try:
+        return CapabilityArtifact.model_validate_json(Path(path).read_text())
+    except FileNotFoundError:
+        raise
+    except (ValueError, OSError) as e:  # pydantic ValidationError and JSON errors are ValueErrors
+        raise UsageError(f"{path} is not a valid capability artifact ({type(e).__name__})") from None
+
+
+def _summary(result: Any, persisted: dict[str, Any]) -> str:
+    """One line for a human: status, why, commit state, confirmation, recoveries. Built from the
+    persisted (masked) view, so it shows outputs the same way the JSON does."""
+    why = getattr(result, "code", None) or getattr(result, "reason", None) or ""
+    failure = getattr(result, "failure", None)
+    where = failure.step_id if failure is not None else (getattr(result, "step_id", None)
+                                                          or getattr(result, "at_step", None))
+    if failure is not None:
+        why = failure.kind.value
+    if where:
+        why = f"{why} at {where}"
+    outputs = persisted.get("outputs") or {}
+    conf = f" confirmation={outputs['confirmation_number']}" if "confirmation_number" in outputs else ""
+    rec = ",".join(f"{r.condition.split('.')[-1].split('@')[0]}:{r.action}" for r in result.recoveries) or "none"
+    return f"{result.status} {why}".strip() + f" | commit_state={result.commit_state}{conf} | recoveries={rec}"
 
 
 def _stamp() -> str:
@@ -58,7 +97,7 @@ def _params(pairs: list[str]) -> dict[str, str]:
     for p in pairs or []:
         k, sep, v = p.partition("=")
         if not sep:
-            raise SystemExit(f"--param expects name=value, got {p!r}")
+            raise UsageError("each --param must be name=value")  # never echo the value: it may be PII
         out[k.strip()] = v
     return out
 
@@ -69,8 +108,14 @@ def _fault_spec(items: list[str]) -> dict[str, Any]:
     for item in items or []:
         body, _, at = item.partition("@")
         name, *rest = body.split(":")
+        if name not in cu_sim.FAULTS:
+            raise UsageError(f"unknown fault {name!r}; choose from {sorted(cu_sim.FAULTS)}")
+        if rest and rest[0] not in ("once", "always"):
+            raise UsageError(f"fault mode must be 'once' or 'always', got {rest[0]!r}")
         cfg: dict[str, Any] = {"mode": rest[0] if rest else "once"}
         if len(rest) > 1:
+            if not rest[1].isdigit():
+                raise UsageError(f"fault {name!r}: the third part is milliseconds, got {rest[1]!r}")
             cfg["ms"] = int(rest[1])
         if at:
             cfg["at"] = at
@@ -81,7 +126,7 @@ def _fault_spec(items: list[str]) -> dict[str, Any]:
 def _tenant(name: str) -> dict[str, Any]:
     path = TENANTS / f"{name}.json"
     if not path.exists():
-        raise SystemExit(f"unknown tenant {name!r}; see {TENANTS}")
+        raise UsageError(f"unknown tenant {name!r}; choose from {TENANT_NAMES}")
     return json.loads(path.read_text())
 
 
@@ -108,7 +153,7 @@ class Target:
                                          {"Content-Type": "application/json"})
             urllib.request.urlopen(req, timeout=5).read()
         else:
-            raise SystemExit("--fault with --target-url needs --control-url")
+            raise UsageError("--fault with --target-url needs --control-url")
 
     def allowlist(self, tenant: dict[str, Any]) -> Allowlist:
         u = urlparse(self.url)
@@ -121,7 +166,7 @@ class Target:
 
 
 def _target_args(p: argparse.ArgumentParser) -> None:
-    p.add_argument("--tenant", default="ridgeline")
+    p.add_argument("--tenant", default="ridgeline", choices=TENANT_NAMES, help="tenant config (default: ridgeline)")
     p.add_argument("--target-url", help="use a running target instead of the embedded simulator")
     p.add_argument("--control-url", help="fault-control URL of a running target")
     p.add_argument("--fault", action="append", default=[], help="name[:mode][:ms][@route]")
@@ -151,7 +196,10 @@ def cmd_discover(args: argparse.Namespace) -> int:
     from agent_hands.handoff.operator import TerminalOperator
     from agent_hands.llm.base import ProviderUnavailable
 
-    spec = CapabilitySpec.model_validate(json.loads(Path(args.spec).read_text()))
+    try:
+        spec = CapabilitySpec.model_validate(json.loads(Path(args.spec).read_text()))
+    except (ValueError, json.JSONDecodeError) as e:
+        raise UsageError(f"{args.spec} is not a valid capability spec ({type(e).__name__})") from None
     if not sys.stdin.isatty():  # before reading any key or spending anything
         print("stopping: discover needs an interactive terminal (a human approves the irreversible step)",
               file=sys.stderr)
@@ -226,17 +274,14 @@ def _run_replay(artifact: CapabilityArtifact, args: argparse.Namespace, target: 
 def cmd_replay(args: argparse.Namespace) -> int:
     from agent_hands.handoff.operator import TerminalOperator
 
-    artifact = CapabilityArtifact.model_validate_json(Path(args.artifact).read_text())
+    artifact = _load_artifact(args.artifact)
     if args.operator == "terminal" and not sys.stdin.isatty():
         print("stopping: --operator terminal needs an interactive terminal", file=sys.stderr)
         return 1
     if artifact.capability.status.value == "draft" and not args.allow_draft:
-        print("refusing: this artifact is a draft (pass --allow-draft for pre-promotion evidence runs)",
-              file=sys.stderr)
-        return 1
+        raise UsageError("this artifact is a draft (pass --allow-draft for pre-promotion evidence runs)")
     if args.allow_draft and (args.approve or args.operator != "none"):
-        print("refusing: a draft can't be approved through replay; use 'hands validate'", file=sys.stderr)
-        return 1
+        raise UsageError("a draft can't be approved through replay; use 'hands validate'")
     target = Target(args)
     run_id = args.run_id or f"rp-{_stamp()}"
     run_dir = Path(args.out) / run_id if args.out else None
@@ -256,18 +301,21 @@ def cmd_replay(args: argparse.Namespace) -> int:
             "tenant_overlay_applied": engine.a.provenance.overlay, "replayed_hash": engine.hash,
             "params": {k: engine.redactor.scrub(v) for k, v in _params(args.param).items()},
         }, indent=2) + "\n")
-    print(json.dumps(result.persisted(artifact, engine.redactor), indent=2))
-    return {"succeeded": 0, "outcome": 2, "needs_human": 3}.get(result.status, 1)
+    # stdout: the masked result (outputs redacted as for disk). In-process callers of ReplayEngine.run
+    # get the real outputs. stderr: one line for a human.
+    persisted = result.persisted(artifact, engine.redactor)
+    print(json.dumps(persisted, indent=2))
+    print(_summary(result, persisted), file=sys.stderr)
+    return EXIT_CODES.get(result.status, 1)
 
 
 def cmd_stability(args: argparse.Namespace) -> int:
-    artifact = CapabilityArtifact.model_validate_json(Path(args.artifact).read_text())
+    artifact = _load_artifact(args.artifact)
     if args.out and artifact.provenance.provider == "fake":
         from agent_hands.evidence import EVIDENCE_ROOT
 
         if Path(args.out).resolve().is_relative_to(EVIDENCE_ROOT.resolve()):
-            print("refusing: artifacts from the fake backend can't produce evidence", file=sys.stderr)
-            return 1
+            raise UsageError("artifacts from the fake backend can't produce evidence")
     target = Target(args)
     rows, prints = [], []
     try:
@@ -283,7 +331,7 @@ def cmd_stability(args: argparse.Namespace) -> int:
             rows.append({"run": run_id, "status": result.status, "engine_ms": result.duration_ms, "wall_ms": wall,
                          "drift": len(result.drift), "recoveries": len(result.recoveries),
                          "steps_ms": {s.step_id: s.duration_ms for s in result.steps}})
-            print(f"{run_id}: {result.status} {result.duration_ms} ms")
+            print(f"{run_id}: {result.status} {result.duration_ms} ms", file=sys.stderr)
     finally:
         target.stop()
     ok = [r for r in rows if r["status"] == "succeeded"]
@@ -300,7 +348,9 @@ def cmd_stability(args: argparse.Namespace) -> int:
                       "mean": int(statistics.mean(times)) if times else 0},
         "identical_paths": len(set(prints)) == 1, "distinct_paths": len(set(prints)),
         "drift_events": sum(r["drift"] for r in rows), "recoveries": sum(r["recoveries"] for r in rows),
-        "step_ms_median": {s: int(statistics.median(r["steps_ms"].get(s, 0) for r in ok)) for s in step_ids} if ok else {},
+        "step_ms_median": (
+            {s: int(statistics.median(r["steps_ms"].get(s, 0) for r in ok)) for s in step_ids} if ok else {}
+        ),
         "runs_detail": rows,
         "note": "each run is explicitly approved by the caller (--approve) for its own run id",
     }
@@ -323,13 +373,12 @@ def cmd_validate(args: argparse.Namespace) -> int:
         print("stopping: validate needs an interactive terminal (a human approves the irreversible step)",
               file=sys.stderr)
         return 1
-    draft = CapabilityArtifact.model_validate_json(Path(args.draft).read_text())
+    draft = _load_artifact(args.draft)
     if draft.capability.status.value != "draft":
         print(f"{args.draft} is already {draft.capability.status.value}", file=sys.stderr)
         return 1
     if draft.provenance.provider == "fake":
-        print("refusing: drafts from the fake backend are never promoted", file=sys.stderr)
-        return 1
+        raise UsageError("drafts from the fake backend are never promoted")
     run_dir = Path(args.draft).parent
     run_id = args.run_id or f"{draft.provenance.discovered_by_run}-validate-{_stamp()}"
     target = Target(args)
@@ -361,20 +410,20 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 
 def cmd_show(args: argparse.Namespace) -> int:
-    print(render(CapabilityArtifact.model_validate_json(Path(args.artifact).read_text())))
+    print(render(_load_artifact(args.artifact)))
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     install_log_filter()
-    ap = argparse.ArgumentParser(prog="hands", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = _Parser(prog="hands", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    t = sub.add_parser("target", help="run the hostile stand-in app")
-    t.add_argument("--port", type=int, default=8341)
-    t.add_argument("--control-port", type=int, default=8342)
-    t.add_argument("--tenant", default="ridgeline")
-    t.add_argument("--fault", action="append", default=[])
+    t = sub.add_parser("target", help="run the hostile stand-in app until Ctrl-C")
+    t.add_argument("--port", type=int, default=8341, help="app port (default: 8341)")
+    t.add_argument("--control-port", type=int, default=8342, help="fault-control API port (default: 8342)")
+    t.add_argument("--tenant", default="ridgeline", choices=TENANT_NAMES, help="tenant (default: ridgeline)")
+    t.add_argument("--fault", action="append", default=[], help="name[:mode][:ms][@route], repeatable")
     t.set_defaults(fn=cmd_target)
 
     d = sub.add_parser("discover", help="real LLM discovery run")
@@ -425,8 +474,18 @@ def main(argv: list[str] | None = None) -> int:
     w.add_argument("artifact")
     w.set_defaults(fn=cmd_show)
 
-    args = ap.parse_args(argv)
-    return int(args.fn(args))
+    try:
+        args = ap.parse_args(argv)
+        return int(args.fn(args))
+    except UsageError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    except FileNotFoundError as e:
+        print(f"error: no such file: {e.filename}", file=sys.stderr)
+        return 2
+    except OSError as e:  # e.g. the target's port is already in use
+        print(f"error: {e.strerror or e}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":  # pragma: no cover

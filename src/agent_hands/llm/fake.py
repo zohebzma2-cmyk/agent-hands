@@ -9,7 +9,6 @@ replays of artifacts it produced are refused too. Nothing it produces is evidenc
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
 from typing import Any
 
 from agent_hands.llm.base import ToolCall, Turn
@@ -44,7 +43,8 @@ class ScriptedFakeProvider:
     def step(self, user_content: list[dict[str, Any]]) -> Turn:
         self.seen.append(user_content)
         observation = "\n".join(
-            c.get("text", "") if isinstance(c, dict) and c.get("type") == "text" else _tool_text(c) for c in user_content
+            c.get("text", "") if isinstance(c, dict) and c.get("type") == "text" else _tool_text(c)
+            for c in user_content
         )
         if self.i >= len(self.script):
             return Turn([], "script exhausted", "end_turn", self.model)

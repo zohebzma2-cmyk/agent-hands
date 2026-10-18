@@ -72,4 +72,5 @@ class Lease:
     def assert_automation(self, epoch: int) -> None:
         """Called before every automated action."""
         if self.owner != Owner.AUTOMATION or self.epoch != epoch:
-            raise LeaseError(f"automation does not hold the session (owner={self.owner}, epoch={self.epoch}, mine={epoch})")
+            raise LeaseError(
+                f"automation does not hold the session (owner={self.owner}, epoch={self.epoch}, mine={epoch})")

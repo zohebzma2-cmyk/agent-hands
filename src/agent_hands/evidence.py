@@ -50,7 +50,8 @@ def _is_under(path: Path, root: Path) -> bool:
 
 class RunLog:
     def __init__(self, run_dir: Path | None, redactor: Redactor, *, backend: str) -> None:
-        """``backend`` is who made the decisions: "anthropic", "fake", or "replay" (no model)."""
+        """``backend`` is who made the decisions: a provider name ("anthropic", "openrouter"), "fake"
+        (tests only; refused for evidence/), or "replay" (no model)."""
         if run_dir is not None and backend == "fake" and _is_under(run_dir, EVIDENCE_ROOT):
             raise EvidenceGuardError("runs driven by the fake LLM backend may not write to evidence/")
         self.dir = run_dir

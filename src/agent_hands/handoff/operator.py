@@ -81,7 +81,7 @@ _CAPTURE_JS = r"""
 (() => {
   if (window.__handsCaptureInstalled) return;
   window.__handsCaptureInstalled = true;
-  const norm = s => (s || '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  const norm = s => (s || '').replace(/\s+/g, ' ').trim();
   const describe = el => {
     const tag = (el.tagName || '').toLowerCase();
     const type = ((el.getAttribute && el.getAttribute('type')) || '').toLowerCase();
@@ -128,7 +128,7 @@ class HumanCapture:
             except Exception:
                 pass
 
-    def _on_event(self, source: Any, payload: dict[str, Any]) -> None:
+    def _on_event(self, _source: Any, payload: dict[str, Any]) -> None:
         if self.lease.owner != Owner.HUMAN:
             return
         value = payload.get("value")
@@ -186,7 +186,8 @@ class TerminalOperator:
             "\n" + "=" * 72 + "\n APPROVAL REQUIRED: irreversible step\n" + "=" * 72
             + f"\n step:    {req.step_id}  {req.intent}\n target:  {req.target}\n effect:  {req.summary}"
             + f"\n run:     {req.run_id}\n\n Keep the focus in this terminal; don't type into the browser window"
-            + " (Enter in a filled form would try to submit it).\n Type 'approve' to let automation click it, or 'reject' to stop."
+            + " (Enter in a filled form would try to submit it)."
+            + "\n Type 'approve' to let automation click it, or 'reject' to stop."
         )
         while True:
             self.out.write(" > ")
@@ -265,7 +266,8 @@ class ScriptedOperator:
 
     def approve(self, req: ApprovalRequest) -> ApprovalDecision:
         self.approvals.append(req)
-        return ApprovalDecision(decision="approved" if self.approve_all else "rejected", approver="scripted-test", at=now())
+        decision = "approved" if self.approve_all else "rejected"
+        return ApprovalDecision(decision=decision, approver="scripted-test", at=now())
 
     def handle(self, req: InterventionRequest, ctx: HandoffContext) -> HandoffOutcome:
         self.requests.append(req)

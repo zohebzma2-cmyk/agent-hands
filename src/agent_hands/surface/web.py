@@ -1,8 +1,10 @@
 """The web surface: perceiving and acting on a live Chromium page through Playwright.
 
-This is the only module that knows it is talking to a browser. The agent loop, the replay engine and
-the artifact speak in ``TargetSpec``/``Condition``/``Action`` terms; a desktop surface (UI
-Automation, AX API) would implement the same operations against an OS accessibility tree.
+This module does the perceiving and acting: observation, frame lookup, condition checks, and the
+browser session. The agent loop, the replay engine and the artifact speak in
+``TargetSpec``/``Condition``/``Action`` terms, but they still call Playwright directly for
+navigation, waits, frame lookup and the commit guard. A desktop surface (UI Automation, AX API)
+means moving those behind the same protocol first.
 
 Perception uses Playwright's AI-mode ARIA snapshot: the page's accessibility tree, across every
 frame, with element refs. Its role vocabulary is the same one ``get_by_role`` resolves against, so
@@ -60,7 +62,7 @@ def control_value(handle: Any) -> str:
 
 
 def norm(s: str) -> str:
-    return " ".join((s or "").replace(" ", " ").split())
+    return " ".join((s or "").split())  # str.split() already treats NBSP as whitespace
 
 
 def route_of(url: str) -> str:
@@ -165,7 +167,10 @@ def describe_condition(cond: Condition) -> str:
         return f"element present: {cond.target.description}"
     if isinstance(cond, ValueEquals):
         v = cond.value
-        shown = v.literal if isinstance(v, LiteralValue) else f"{{{v.param}}}" if isinstance(v, ParamRef) else "{secret}"
+        if isinstance(v, LiteralValue):
+            shown = v.literal
+        else:
+            shown = f"{{{v.param}}}" if isinstance(v, ParamRef) else "{secret}"
         return f"{cond.target.description} holds {shown}"
     return f"element absent: {cond.target.description}"
 
