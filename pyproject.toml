@@ -3,7 +3,7 @@ name = "agent-hands"
 version = "0.1.0"
 description = "Record-once, replay-many computer use for legacy back-office UIs (interface.ai take-home)"
 authors = [
-    { name = "Zoheb Alvi", email = "zohebzma@gmail.com" }
+    { name = "Zoheb Alvi", email = "250600048+zohebzma2-cmyk@users.noreply.github.com" }
 ]
 requires-python = ">=3.12"
 dependencies = [
