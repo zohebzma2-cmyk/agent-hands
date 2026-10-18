@@ -177,6 +177,8 @@ main route matches /core/confirm.do*; text contains 'Sub-Account Opened' visible
     "gen-1792267778-5OpNi4agXSscIqoFshNL",
     "gen-1792267781-dA4x9pvwq9ve1i5Kq88B"
   ],
+  "overlay": null,
+  "base_hash": null,
   "validated_runs": [
     "disc-20261017T200007-validate-20261017T204352"
   ],
@@ -185,3 +187,4 @@ main route matches /core/confirm.do*; text contains 'Sub-Account Opened' visible
   "approved_hash": null
 }
 ```
+

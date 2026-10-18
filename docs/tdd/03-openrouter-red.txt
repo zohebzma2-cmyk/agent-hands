@@ -1,3 +1,4 @@
+# Note: local temp paths in this recorded run were replaced with <tmp>.
 FFFFFFFFFFFF                                                             [100%]
 =================================== FAILURES ===================================
 ___________________ test_missing_keychain_item_stops_cleanly ___________________

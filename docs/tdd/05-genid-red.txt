@@ -1,3 +1,4 @@
+# Note: local temp paths in this recorded run were replaced with <tmp>.
 .....FF....F                                                             [100%]
 =================================== FAILURES ===================================
 _________ test_request_goes_to_the_pinned_endpoint_with_pinned_routing _________

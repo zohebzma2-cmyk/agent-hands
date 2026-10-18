@@ -14,10 +14,10 @@ A small but real computer-use automation layer for legacy bank back-office UIs t
 4. When stuck, it **hands the same live browser session to a human**, records what they did, and resumes.
 5. It stays inside an **allowlist** and never persists secrets or raw sensitive data.
 
-The target is a local, deliberately hostile stand-in for a credit union back office (`target/`),
+The target is a local, deliberately hostile stand-in for a credit union back office (`src/cu_sim/`),
 with switches that inject runtime faults.
 
-Graded on judgment: artifact schema, deterministic replay plus error taxonomy, safety and escalation.
+What matters most: artifact schema, deterministic replay plus error taxonomy, safety and escalation.
 A thin but real version of every core requirement beats a polished subset. Every mock is deliberate
 and documented. The discovery run in `evidence/` must be a real LLM run.
 
@@ -26,8 +26,8 @@ and documented. The discovery run in `evidence/` must be a real LLM run.
 Python 3.12, uv, Playwright (Chromium), pydantic v2, pytest. Keep dependencies small.
 LLM: Claude Opus 5.5 behind a provider interface. Default: OpenRouter (`anthropic/claude-opus-5.5`,
 routed to Anthropic only). Direct: Anthropic (`claude-opus-5-5`).
-Irreversible steps are approved live by a human at the terminal (discovery) or by an explicit, run-bound caller
-approval (replay); unattended replay stops at them.
+Irreversible steps are approved live by a human at the terminal (discovery) or by an explicit,
+run-bound caller approval (replay); unattended replay stops at them.
 
 ## Commands
 
@@ -57,7 +57,6 @@ uv run python scripts/scan_history.py              # secrets/paths across git hi
   me; never look for a key anywhere else (no env vars, no files, no ~/.zshenv). Never print,
   log or write a key, including evidence, traces, fixtures, exception messages and test output.
 - **Never push without asking me first.** Commit locally after every step that works.
-  Don't email anyone.
 - **Nothing outside the allowlist.** The agent and replay engine act only on allowlisted
   origins, routes and action types. The policy layer enforces this in code, not in the prompt.
 - **The fake LLM backend is for tests only.** Nothing it produces may go in `evidence/`.

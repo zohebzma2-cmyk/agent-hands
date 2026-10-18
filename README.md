@@ -19,57 +19,51 @@ The design write-up is [`REPORT.md`](REPORT.md). Real runs are in [`evidence/`](
 
 ## Setup
 
-Python 3.12 and [uv](https://docs.astral.sh/uv/).
+Python 3.12 and [uv](https://docs.astral.sh/uv/). Works on macOS and Linux.
 
 ```sh
 uv sync
 uv run playwright install chromium
 ```
 
-## Model key (only for a live discovery run)
-
-The key lives in the macOS Keychain. The provider reads it when a live run starts, and the audit
-scripts read it only to check it never appears in a file. It is never read from env vars or files,
-never printed or logged, and only sent to the provider's hard-coded base URL.
-
-```sh
-# default: Claude Opus 5.5 through OpenRouter, pinned to Anthropic as the only upstream
-security add-generic-password -s openrouter-api-key -a "$USER" -w   # prompts for the key, no echo
-
-# or direct to Anthropic, then pass --provider anthropic
-security add-generic-password -s anthropic-api-key -a "$USER" -w
-```
-
-I used OpenRouter because that was the key I had. Production would call Anthropic directly with
-zero data retention.
-
 ## Running without live services
 
-Nothing below needs a key or the network.
+Nothing here needs a key or the network.
 
 ```sh
 uv run pytest                 # discovery is driven by a clearly labelled scripted fake model
-uv run hands target           # the stand-in app at http://127.0.0.1:8341/core/login.do (teller01 / synthetic-teller-pass)
 uv run hands show artifacts/cu_core.open_sub_account@1.0.0.json   # the discovered artifact, as a review page
 ```
 
-The replay commands below also run offline. Each starts its own copy of the stand-in app unless you
-pass `--target-url`.
+The stand-in app runs until Ctrl-C, so start it in a second terminal if you want to click around:
+
+```sh
+uv run hands target           # http://127.0.0.1:8341/core/login.do  (teller01 / synthetic-teller-pass)
+```
+
+You don't need it running for the commands below: each starts its own copy unless you pass
+`--target-url`.
 
 ## Demo, in order
 
+No key? Start at step 3. Steps 3 to 7 run offline in about 45 seconds.
+
+The `P=(...)` array syntax needs bash or zsh.
+
 ```sh
 P=(-p member_id=900001 -p account_type=Savings -p "nickname=Rainy day" -p initial_deposit=25.00)
-A=artifacts/cu_core.open_sub_account@1.0.0.json
 
-# 1. Discovery with the real model. A browser opens. You'll be asked to approve the irreversible
-#    step twice: once when the model reaches it, once in the validation replay that follows.
-#    Keep keyboard focus in the terminal. Writes evidence, a draft and (if validation passes) the
-#    artifact. It refuses to overwrite an existing artifact version with different content.
-uv run hands discover --spec specs/open_sub_account.json "${P[@]}" --headed --out runs
+# 1. Discovery with the real model (needs a key, see below). A browser opens. You'll be asked to
+#    approve the irreversible step twice: once when the model reaches it, once in the validation
+#    replay that follows. Keep keyboard focus in the terminal.
+uv run hands discover --spec specs/open_sub_account.json "${P[@]}" --headed --out runs --artifacts runs/artifacts
 
-# 2. Only if validation in step 1 didn't pass: validate the draft again, no model. Type "approve" once.
-uv run hands validate runs/<run-id>/compiled_draft.json "${P[@]}"
+# 2. Only if validation in step 1 didn't pass: validate the draft again, no model. Type "approve".
+uv run hands validate runs/RUN_ID/compiled_draft.json "${P[@]}" --artifacts runs/artifacts
+
+# Replay the artifact you just discovered, or the committed one if you skipped steps 1 and 2.
+A=runs/artifacts/cu_core.open_sub_account@1.0.0.json
+[ -f "$A" ] || A=artifacts/cu_core.open_sub_account@1.0.0.json
 
 # 3. Replay. --approve s13 is your explicit approval of the commit for this one run.
 uv run hands replay $A "${P[@]}" --approve s13
@@ -92,23 +86,48 @@ uv run hands replay $A "${P[@]}" --tenant lakeside --approve s13
 uv run hands stability $A "${P[@]}" --approve s13 --runs 20
 ```
 
+`hands replay` prints the result as JSON on stdout, with outputs masked the way they are on disk,
+and one summary line on stderr. Code that calls `ReplayEngine.run` in-process gets the real outputs.
+Exit codes: 0 succeeded, 1 failed, 2 outcome, 3 needs_human. Bad input prints one `error: ...` line
+on stderr and also exits 2, with nothing on stdout; an outcome always prints its JSON result.
+
 Faults are `name[:mode][:ms][@route]`: `member_not_found`, `validation_error`, `permission_denied`,
 `announcement`, `unknown_dialog`, `session_expired`, `slow`, `http500`, `http500_after_commit`. They
 go through a control API on a separate port that no allowlist includes.
 
+## Live discovery (needs a model key)
+
+The key is read only from the macOS Keychain, on purpose. On other OSes, setup, tests and every
+replay still work; only `hands discover` needs the key.
+
+```sh
+# default: Claude Opus 5.5 through OpenRouter, pinned to Anthropic as the only upstream
+security add-generic-password -s openrouter-api-key -a "$USER" -w   # prompts for the key, no echo
+
+# or direct to Anthropic, then pass --provider anthropic
+security add-generic-password -s anthropic-api-key -a "$USER" -w
+```
+
+The provider reads the key when a live run starts, and the audit scripts read it only to check it
+never appears in a file. It is never read from env vars or files, never printed or logged, and only
+sent to the provider's hard-coded base URL. I used OpenRouter because that was the key I had.
+Production would call Anthropic directly with zero data retention.
+
 ## Live human handoff
 
-This records a real handoff into `evidence/handoff/handoff-human-live` (the one there now is mine).
+This records a handoff into `runs/handoff-try`. The one in
+[`evidence/handoff/handoff-human-live`](evidence/handoff/README.md) is mine, recorded the same way.
 
 ```sh
 uv run hands replay artifacts/cu_core.open_sub_account@1.0.0.json \
   -p member_id=900003 -p account_type=Savings -p "nickname=Rainy day" -p initial_deposit=25.00 \
   --approve s13 --fault unknown_dialog --operator terminal --headed \
-  --out evidence/handoff --run-id handoff-human-live
+  --out runs --run-id handoff-try
 ```
 
-When the INTERVENTION box appears: type `take`. In the browser, enter Supervisor PIN `2468` and click
-Approve Override. Back in the terminal, type `resume`. It waits up to 15 minutes.
+When the INTERVENTION box appears, click into the terminal and type `take`. In the browser, enter
+Supervisor PIN `2468` and click Approve Override. Back in the terminal, type `resume`. It waits up to
+15 minutes.
 
 ## Layout
 
@@ -127,7 +146,11 @@ src/agent_hands/
 src/cu_sim/   the hostile stand-in app and its fault switches
 specs/        capability contracts
 config/       tenant configs: allowlist, secret refs, overlays
-artifacts/    validated artifacts
+artifacts/    validated artifacts and their review pages
 evidence/     real runs, each folder indexed
-scripts/      evidence audit, generation lookup, evidence recording, simulated handoff, provider smoke test
+docs/         design-notes.md (detail behind the report), tdd/ (red and green test runs; local temp
+              paths in them replaced with <tmp>)
+tests/        the test suite and two artifact fixtures
+scripts/      evidence audit, history scan, generation lookup, evidence recording, simulated handoff,
+              provider smoke test
 ```
