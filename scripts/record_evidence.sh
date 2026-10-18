@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Records the human-in-the-loop evidence runs back to back. Run from the repo root in an interactive terminal:
+# Records the human-in-the-loop evidence runs back to back. Run from the repo root in an
+# interactive terminal:
 #
 #   bash scripts/record_evidence.sh
 #
@@ -8,7 +9,7 @@
 # 3. approved replays + 20x stability, unattended (nothing to type)            headless, ~3 min
 #
 # Steps 2 and 3 pass --approve s13: running this script is your explicit approval of the commit in
-# each of those runs (recorded as your user, channel caller_token, bound to that run's own id).
+# each of those runs (recorded as your OS user, channel caller_token, bound to that run's own id).
 set -euo pipefail
 
 DRAFT=evidence/discovery/disc-20261017T200007/compiled_draft.json
@@ -42,7 +43,7 @@ banner "3/3  Approved replays and stability (unattended; nothing to type)"
 replay() { local id=$1 mid=$2; shift 2; params "$mid"
   uv run hands replay "$ART" "${P[@]}" --approve s13 --out "$OUT_REPLAY" --run-id "$id" "$@" >/dev/null \
     && echo "  $id: succeeded" || echo "  $id: exit $? (see $OUT_REPLAY/$id/result.json)"; }
-replay approved-happy-path-900003 900003
+replay approved-happy-path-second-member 900003
 replay approved-announcement-dialog 900004 --fault announcement
 replay approved-session-expired 900002 --fault session_expired
 replay approved-http500-member-detail 900001 --fault http500

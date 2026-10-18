@@ -4,5 +4,5 @@
   "fault": "unknown_dialog (once)",
   "operator": "scripted-operator (simulated; no approval authority)",
   "pre_approved_steps": [],
-  "note": "Simulated: a scripted operator acts on the same live Playwright page in place of a human, without approval authority, to test separation of duties."
+  "note": "Simulated: a scripted operator acts on the same live Playwright page in place of a human, without approval authority, to test separation of duties. Its supervisor override is blocked at the network."
 }

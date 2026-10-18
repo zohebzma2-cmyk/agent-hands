@@ -10,5 +10,5 @@
   "resume_check": "element present: cell next to \"Base Share\", column Balance (within 5000 ms) (or the target of s07 is reachable)",
   "screenshot": "screens/017-INT-handoff-supervisor-override-automated-2-before.png",
   "page_summary": "[top /core/frameset.do]  | [banner /core/banner.do] Ridgeline Example Credit Union (SYNTHETIC) \u2592 \u2592 | [nav /core/nav.do] Functions Member Search Teller Drawer Reports Sign Off | [main /] ",
-  "requested_at": "2026-10-17T23:05:31.019+00:00"
+  "requested_at": "2026-10-17T23:44:04.882+00:00"
 }

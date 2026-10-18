@@ -39,8 +39,8 @@ message ids (`msg_...`) and the per-turn costs in `meta.json` were never affecte
 ## The first validation attempt
 
 The validation replay filled the form, then waited 9 minutes for my approval. During that wait,
-input reached the browser and submitted the form. The commit guard was not armed, so it blocked the
-submit and nothing was committed. The form became Chromium's blocked page, and the engine reported
+input reached the browser and submitted the form. No approval had armed the commit guard yet, so it
+blocked the submit. Nothing was committed. The form became Chromium's blocked page, and the engine reported
 `target_not_found` at s13 because the button was gone. I aborted the handoff.
 
 Commit e837dfd has the reproduction and the fixes: focus is cleared before any human prompt, and a

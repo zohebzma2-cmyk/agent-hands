@@ -13,7 +13,7 @@ where a screen mattered, masked screenshots in `screens/`. Folders below have th
 | Run | Result |
 |---|---|
 | `discovery/disc-20261017T200007` | Claude Opus 5.5 via OpenRouter, served by Anthropic on all 8 turns. 14 actions, `done`. $0.156849. I approved the irreversible submit live. |
-| `.../validation_replay` | First validation attempt: `failed operator_aborted` at s13. Stray input reached the browser during the approval wait, the commit guard blocked the unapproved submit, nothing was committed. Root cause and fix in commit e837dfd. |
+| `.../validation_replay` | First validation attempt: `failed operator_aborted` at s13. Stray input reached the browser during the approval wait and the commit guard blocked the unapproved submit, so nothing was committed. The engine then couldn't find the button, raised a handoff for `target_not_found`, and I aborted it. Root cause and fix in commit e837dfd. |
 | `.../validation_disc-...-validate-20261017T204352` | Second validation: `succeeded`, committed, my live approval. This promoted the draft to `artifacts/cu_core.open_sub_account@1.0.0.json`. |
 
 ## Replays of the discovered artifact (no model)
@@ -24,7 +24,7 @@ where a screen mattered, masked screenshots in `screens/`. Folders below have th
 | `replay/unattended-announcement-dialog` | `needs_human approval_required` at s13 | Known dialog dismissed, then unattended replay stops at the commit gate. |
 | `replay/unattended-session-expired` | `needs_human approval_required` at s13 | Session dropped mid-run: signed on again, resumed at s04, stopped at the gate. |
 | `replay/unattended-http500-member-detail` | `needs_human approval_required` at s13 | One 500 on the detail page, one retry, stopped at the gate. |
-| `replay/approved-happy-path-900003` | `succeeded`, committed | A different member than discovery used. My caller approval. |
+| `replay/approved-happy-path-second-member` | `succeeded`, committed | A different member than discovery used. My caller approval. |
 | `replay/approved-announcement-dialog` | `succeeded`, committed | Dialog dismissed, then committed. |
 | `replay/approved-session-expired` | `succeeded`, committed | Re-login and resume, then committed. Exactly one account opened. |
 | `replay/approved-http500-member-detail` | `succeeded`, committed | One-off 500 retried, then committed. |
@@ -41,7 +41,7 @@ where a screen mattered, masked screenshots in `screens/`. Folders below have th
 | Run | Result | What it shows |
 |---|---|---|
 | `handoff/handoff-human-live` | `succeeded`, committed | **The real handoff.** I took control at s07, entered the supervisor PIN in the live browser and resumed. 4 actions captured, PIN masked, check on return passed, automation finished s07 to s14. |
-| `handoff/handoff-supervisor-override-automated` | `failed unexpected_state` at s07 | **Simulated** test version. An operator with no approval authority takes over, and its irreversible supervisor override is blocked at the network. Nothing committed. |
+| `handoff/handoff-supervisor-override-automated` | `failed unexpected_state` at s07 | **Simulated** test version. A scripted operator without approval authority takes over; its irreversible supervisor override is blocked at the network, so the check on return fails. Nothing committed. |
 | `handoff/handoff-supervisor-override` | `failed operator_aborted` at s07 | Timeout path: control taken, never resumed within 15 minutes. Nothing committed. |
 
 ## Second tenant

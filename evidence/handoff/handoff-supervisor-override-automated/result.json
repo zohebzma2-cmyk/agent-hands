@@ -2,8 +2,8 @@
   "run_id": "handoff-supervisor-override-automated",
   "capability": "cu_core.open_sub_account@1.0.0",
   "artifact_hash": "sha256:2ccdf82ba1b52b90f08d33ad394dce8394fd3136b7ddeb46a1278dbf16681d5a",
-  "started_at": "2026-10-17T23:05:29.808+00:00",
-  "duration_ms": 1748,
+  "started_at": "2026-10-17T23:44:03.787+00:00",
+  "duration_ms": 1632,
   "params": {
     "member_id": "[PII:member_id]",
     "account_type": "Savings",
@@ -35,7 +35,7 @@
           0
         ]
       },
-      "duration_ms": 46,
+      "duration_ms": 30,
       "attempts": 1
     },
     {
@@ -62,7 +62,7 @@
           0
         ]
       },
-      "duration_ms": 26,
+      "duration_ms": 23,
       "attempts": 1
     },
     {
@@ -89,7 +89,7 @@
           0
         ]
       },
-      "duration_ms": 73,
+      "duration_ms": 63,
       "attempts": 1
     },
     {
@@ -153,7 +153,7 @@
           0
         ]
       },
-      "duration_ms": 214,
+      "duration_ms": 49,
       "attempts": 1
     },
     {
@@ -180,7 +180,7 @@
           0
         ]
       },
-      "duration_ms": 46,
+      "duration_ms": 213,
       "attempts": 1
     }
   ],
@@ -190,10 +190,10 @@
       "intervention_id": "INT-handoff-supervisor-override-automated-1",
       "step_id": "s07",
       "reason": "unexpected_state",
-      "requested_at": "2026-10-17T23:05:30.361+00:00",
+      "requested_at": "2026-10-17T23:44:04.285+00:00",
       "taken_by": "scripted-operator (simulated; no approval authority)",
-      "taken_at": "2026-10-17T23:05:30.363+00:00",
-      "released_at": "2026-10-17T23:05:30.897+00:00",
+      "taken_at": "2026-10-17T23:44:04.287+00:00",
+      "released_at": "2026-10-17T23:44:04.826+00:00",
       "resolution": "resumed",
       "human_actions": 3,
       "verified": false,
@@ -203,10 +203,10 @@
       "intervention_id": "INT-handoff-supervisor-override-automated-2",
       "step_id": "s07",
       "reason": "unexpected_state",
-      "requested_at": "2026-10-17T23:05:31.019+00:00",
+      "requested_at": "2026-10-17T23:44:04.882+00:00",
       "taken_by": "scripted-operator (simulated; no approval authority)",
-      "taken_at": "2026-10-17T23:05:31.022+00:00",
-      "released_at": "2026-10-17T23:05:31.523+00:00",
+      "taken_at": "2026-10-17T23:44:04.883+00:00",
+      "released_at": "2026-10-17T23:44:05.387+00:00",
       "resolution": "resumed",
       "human_actions": 0,
       "verified": false,

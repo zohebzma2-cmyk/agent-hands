@@ -8,7 +8,9 @@ pre-approved steps.
   `needs_human approval_required`, which is what unattended replay must do. These ran on the draft
   before promotion, flagged with `--allow-draft`.
 - `approved-*` ran from my own command with `--approve s13`, my explicit approval for that one run.
-  All four committed exactly one account each.
+  All four committed exactly one account each. `approved-happy-path-second-member` was renamed after
+  recording: its original run id ended in the member number, which its own files redact (they still
+  show `approved-happy-path-[PII:member_id]`).
 - `hard-failure-http500-persistent` shows the hard-failure bucket: the server returns 500 every time,
   the retry budget (2) runs out, and the result names the step, what was expected, what was observed,
   and points to a screenshot. `retryable` is true because nothing was committed.

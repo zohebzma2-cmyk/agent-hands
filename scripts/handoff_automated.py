@@ -1,4 +1,4 @@
-"""Handoff evidence with an AUTOMATED operator standing in for the human, clearly labelled.
+"""Handoff evidence with a SCRIPTED operator in place of a human, clearly labelled as simulated.
 
 usage: uv run python scripts/handoff_automated.py [OUT_DIR]
 
@@ -6,11 +6,11 @@ Same mechanism as the terminal handoff: replay hits the unknown "Supervisor Over
 intervention, the lease moves to the operator, the operator acts on the same live page, capture
 records it, automation verifies the page and resumes.
 
-What differs is who the operator is: a scripted stand-in for a human, labelled as simulated,
-recorded as such (taken_by), never as a person. It has NO approval authority (can_approve=False).
-The supervisor override it tries is itself an irreversible, human-only action, so the commit guard
-blocks it at the network: the dialog stays, verification fails, nothing is committed. That is the
-point of this run: taking over a session does not confer authority to commit.
+What differs is who the operator is: a scripted operator acts on the same live page in place of a
+human, without approval authority (can_approve=False), to test separation of duties. It is recorded
+as simulated in taken_by. The supervisor override it tries is itself an irreversible, human-only
+action, so the commit guard blocks it at the network. The blocked submit leaves the main frame on
+Chromium's error page, the check on return fails twice, and nothing is committed.
 """
 
 import json
@@ -32,8 +32,8 @@ run_id = "handoff-supervisor-override-automated"
 params = {"member_id": "900003", "account_type": "Savings", "nickname": "Rainy day", "initial_deposit": "25.00"}
 
 
-class AutomatedOperator:
-    name = "automated"
+class SimulatedOperator:
+    name = "scripted"
     can_approve = False  # may take over the session; may never approve a commit
 
     def approve(self, req):  # pragma: no cover - the engine never asks an operator that can't approve
@@ -48,7 +48,7 @@ class AutomatedOperator:
             main.locator("input[value='Approve Override']").click()
             main.wait_for_load_state()
         ctx.pump(500)
-        return HandoffOutcome("resumed", OPERATOR, taken, now(), note="automated stand-in for the human")
+        return HandoffOutcome("resumed", OPERATOR, taken, now(), note="simulated operator")
 
 
 artifact = CapabilityArtifact.model_validate_json(ART.read_text())
@@ -58,7 +58,7 @@ session = BrowserSession(policy=Policy(Allowlist(origins=[sim.url], routes=["/",
 session.start()
 try:
     engine = ReplayEngine(artifact, load_profile("cu_core"), session, ReplayConfig(run_id=run_id, origin=sim.url),
-                          operator=AutomatedOperator(), run_dir=out / run_id)
+                          operator=SimulatedOperator(), run_dir=out / run_id)
     result = engine.run(params)
     committed = len(sim.state.snapshot()["subaccounts"])
 finally:
@@ -67,9 +67,8 @@ finally:
 (out / run_id / "invocation.json").write_text(json.dumps({
     "artifact": artifact.ref, "artifact_status": artifact.capability.status.value,
     "fault": "unknown_dialog (once)", "operator": OPERATOR, "pre_approved_steps": [],
-    "note": "Simulated: a scripted operator acts on the same live Playwright page in place of a human, "
-            "without approval authority, to test separation of duties. "
-            "It has no authority to approve the irreversible step.",
+    "note": "Simulated: a scripted operator acts on the same live Playwright page in place of a human, without "
+            "approval authority, to test separation of duties. Its supervisor override is blocked at the network.",
 }, indent=2) + "\n")
 print(result.status, getattr(result, "reason", ""), "| commit_state", result.commit_state, "| sub-accounts", committed)
 print([(h.step_id, h.reason, h.taken_by, h.resolution, h.verified, h.human_actions) for h in result.handoffs])

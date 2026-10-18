@@ -1,6 +1,6 @@
 [
   {
-    "at": "2026-10-17T23:05:30.394+00:00",
+    "at": "2026-10-17T23:44:04.325+00:00",
     "kind": "change",
     "frame": "main",
     "path": "/core/member.do",
@@ -8,7 +8,7 @@
     "value": "[MASKED]"
   },
   {
-    "at": "2026-10-17T23:05:30.394+00:00",
+    "at": "2026-10-17T23:44:04.325+00:00",
     "kind": "click",
     "frame": "main",
     "path": "/core/member.do",
@@ -16,7 +16,7 @@
     "value": null
   },
   {
-    "at": "2026-10-17T23:05:30.395+00:00",
+    "at": "2026-10-17T23:44:04.326+00:00",
     "kind": "submit",
     "frame": "main",
     "path": "/core/member.do",
